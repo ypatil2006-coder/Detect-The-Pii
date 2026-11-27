@@ -1,7 +1,7 @@
 import { parseCsv, sanitizeCsv } from '../formats/csv';
-import { detectPii } from './detector';
+import { type DetectTimings } from './detector';
 import { buildSideBySideDiff } from './diff';
-import { sanitizeText, sanitizeTextWithReplacements } from './redactor';
+import { sanitizeTextWithReplacements } from './redactor';
 import {
   createPseudonymState,
   type DetectionStats,
@@ -9,6 +9,7 @@ import {
   type PiiMatch,
   type PseudonymMapEntry,
   type RedactionMode,
+  type SanitizeFn,
 } from './types';
 
 /** Timing and outcome telemetry for a single stage of the local sanitization pipeline. */
@@ -83,10 +84,14 @@ function buildCsvDiffRows(
   return rows;
 }
 
+function roundMs(ms: number): number {
+  return Number(Math.max(0, ms).toFixed(3));
+}
+
 function buildStages(
   parseMs: number,
   parsedUnits: number,
-  scanMs: number,
+  timings: DetectTimings,
   stats: DetectionStats,
   redactMs: number,
   diffMs: number,
@@ -94,50 +99,49 @@ function buildStages(
 ): PipelineStageTiming[] {
   const otherMatched =
     stats.byType.EMAIL + stats.byType.PHONE + stats.byType.IP + stats.byType.PAN;
-  const checkSlice = Number((scanMs / 4).toFixed(3));
   return [
     {
       id: 'parse',
       label: 'Input Parse',
-      durationMs: Number(parseMs.toFixed(3)),
+      durationMs: roundMs(parseMs),
       matchedCount: parsedUnits,
     },
     {
       id: 'scan',
       label: 'Pattern Scan',
-      durationMs: Number(checkSlice.toFixed(3)),
+      durationMs: roundMs(timings.scanMs),
       matchedCount: stats.total,
     },
     {
       id: 'luhn',
       label: 'Luhn Card Check',
-      durationMs: Number(checkSlice.toFixed(3)),
+      durationMs: roundMs(timings.luhnMs),
       matchedCount: stats.byType.CREDIT_CARD,
       rejectedCount: stats.rejectedCreditCards,
     },
     {
       id: 'verhoeff',
       label: 'Verhoeff Aadhaar Check',
-      durationMs: Number(checkSlice.toFixed(3)),
+      durationMs: roundMs(timings.verhoeffMs),
       matchedCount: stats.byType.AADHAAR,
       rejectedCount: stats.rejectedAadhaar,
     },
     {
       id: 'validators',
       label: 'PAN / IP / Email / Phone',
-      durationMs: Number(checkSlice.toFixed(3)),
+      durationMs: roundMs(timings.validatorsMs),
       matchedCount: otherMatched,
     },
     {
       id: 'redact',
       label: 'Mode Operator',
-      durationMs: Number(redactMs.toFixed(3)),
+      durationMs: roundMs(redactMs),
       matchedCount: stats.total,
     },
     {
       id: 'diff',
       label: 'Diff & Export',
-      durationMs: Number(diffMs.toFixed(3)),
+      durationMs: roundMs(diffMs),
       matchedCount: changedLines,
     },
   ];
@@ -156,9 +160,28 @@ export function runPipeline(
     const parsedRows = parseCsv(input);
     const parseMs = performance.now() - parseStart;
 
-    const redactStart = performance.now();
-    const csvResult = sanitizeCsv(input, mode, sanitizeText);
-    const redactMs = performance.now() - redactStart;
+    const accTimings: DetectTimings = {
+      scanMs: 0,
+      luhnMs: 0,
+      verhoeffMs: 0,
+      validatorsMs: 0,
+    };
+    let detectTotalMs = 0;
+
+    const timedSanitize: SanitizeFn = (cell, cellMode, state) => {
+      const { result, timings } = sanitizeTextWithReplacements(cell, cellMode, state);
+      accTimings.scanMs += timings.scanMs;
+      accTimings.luhnMs += timings.luhnMs;
+      accTimings.verhoeffMs += timings.verhoeffMs;
+      accTimings.validatorsMs += timings.validatorsMs;
+      detectTotalMs +=
+        timings.scanMs + timings.luhnMs + timings.verhoeffMs + timings.validatorsMs;
+      return result;
+    };
+
+    const csvStart = performance.now();
+    const csvResult = sanitizeCsv(input, mode, timedSanitize);
+    const redactMs = Math.max(0, performance.now() - csvStart - detectTotalMs);
 
     const diffStart = performance.now();
     const diffRows = buildCsvDiffRows(input, csvResult.sanitizedCsv, mode);
@@ -168,9 +191,9 @@ export function runPipeline(
     const stages = buildStages(
       parseMs,
       parsedRows.length,
-      redactMs * 0.6,
+      accTimings,
       csvResult.stats,
-      redactMs * 0.4,
+      redactMs,
       diffMs,
       changedLines,
     );
@@ -193,13 +216,11 @@ export function runPipeline(
   const lineCount = input ? input.split('\n').length : 0;
   const parseMs = performance.now() - parseStart;
 
-  const scanStart = performance.now();
-  const { matches } = detectPii(input);
-  const scanMs = performance.now() - scanStart;
-
-  const redactStart = performance.now();
-  const { result, replacements } = sanitizeTextWithReplacements(input, mode);
-  const redactMs = performance.now() - redactStart;
+  const sanitizeStart = performance.now();
+  const { result, replacements, timings } = sanitizeTextWithReplacements(input, mode);
+  const detectTotalMs =
+    timings.scanMs + timings.luhnMs + timings.verhoeffMs + timings.validatorsMs;
+  const redactMs = Math.max(0, performance.now() - sanitizeStart - detectTotalMs);
 
   const diffStart = performance.now();
   const diffRows = buildSideBySideDiff(input, result.matches, mode, replacements);
@@ -209,7 +230,7 @@ export function runPipeline(
   const stages = buildStages(
     parseMs,
     lineCount,
-    scanMs,
+    timings,
     result.stats,
     redactMs,
     diffMs,
@@ -225,6 +246,6 @@ export function runPipeline(
     diffRows,
     durationMs: performance.now() - totalStart,
     stages,
-    matches,
+    matches: result.matches,
   };
 }

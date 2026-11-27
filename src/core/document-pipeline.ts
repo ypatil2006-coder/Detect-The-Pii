@@ -5,7 +5,7 @@ import {
   outputFileName,
 } from '../formats/index';
 import { CodeBook } from './codes';
-import { detect, detectPii } from './detector';
+import { detectPii, detectWithTimings, type DetectTimings } from './detector';
 import { maskDisplay } from './mask';
 import type { PipelineStageTiming } from './pipeline';
 export type { PipelineStageTiming } from './pipeline';
@@ -257,13 +257,17 @@ function buildDiffRowsForItems(
   return rows;
 }
 
+function roundMs(ms: number): number {
+  return Number(Math.max(0, ms).toFixed(3));
+}
+
 function buildSessionFromItems(
   doc: LoadedDocument,
   items: RedactionItem[],
   markerStyle: MarkerStyle,
   state: PseudonymState,
   parseMs: number,
-  scanMs: number,
+  timings: DetectTimings,
   totalStart: number,
 ): DocumentSessionResult {
   const redactStart = performance.now();
@@ -349,52 +353,51 @@ function buildSessionFromItems(
 
   const otherMatched =
     stats.byType.EMAIL + stats.byType.PHONE + stats.byType.IP + stats.byType.PAN;
-  const checkSlice = Number((scanMs / 4).toFixed(3));
   const changedLines = diffRows.filter((r) => r.hasChanges).length;
 
   const stages: PipelineStageTiming[] = [
     {
       id: 'parse',
       label: 'Input Parse',
-      durationMs: Number(parseMs.toFixed(3)),
+      durationMs: roundMs(parseMs),
       matchedCount: doc.text ? doc.text.split('\n').length : 0,
     },
     {
       id: 'scan',
       label: 'Pattern Scan',
-      durationMs: checkSlice,
+      durationMs: roundMs(timings.scanMs),
       matchedCount: stats.total,
     },
     {
       id: 'luhn',
       label: 'Luhn Card Check',
-      durationMs: checkSlice,
+      durationMs: roundMs(timings.luhnMs),
       matchedCount: stats.byType.CREDIT_CARD,
       rejectedCount: stats.rejectedCreditCards,
     },
     {
       id: 'verhoeff',
       label: 'Verhoeff Aadhaar Check',
-      durationMs: checkSlice,
+      durationMs: roundMs(timings.verhoeffMs),
       matchedCount: stats.byType.AADHAAR,
       rejectedCount: stats.rejectedAadhaar,
     },
     {
       id: 'validators',
       label: 'PAN / IP / Email / Phone',
-      durationMs: checkSlice,
+      durationMs: roundMs(timings.validatorsMs),
       matchedCount: otherMatched,
     },
     {
       id: 'redact',
       label: 'Mode Operator',
-      durationMs: Number(redactMs.toFixed(3)),
+      durationMs: roundMs(redactMs),
       matchedCount: stats.total,
     },
     {
       id: 'diff',
       label: 'Diff & Export',
-      durationMs: Number(diffMs.toFixed(3)),
+      durationMs: roundMs(diffMs),
       matchedCount: changedLines,
     },
   ];
@@ -424,6 +427,7 @@ export function analyzeDocument(
   existingMappings?: MappingEntry[],
 ): DocumentSessionResult {
   const totalStart = performance.now();
+  const parseStart = performance.now();
   const state = sharedState ?? createPseudonymState();
   seedPseudonymState(state, existingMappings);
 
@@ -431,12 +435,11 @@ export function analyzeDocument(
   if (existingMappings && existingMappings.length > 0) {
     book.seed(existingMappings);
   }
+  const parseMs = performance.now() - parseStart;
 
-  const scanStart = performance.now();
-  const items = detect(doc.text, patterns, book);
-  const scanMs = performance.now() - scanStart;
+  const { items, timings } = detectWithTimings(doc.text, patterns, book);
 
-  return buildSessionFromItems(doc, items, markerStyle, state, 0.05, scanMs, totalStart);
+  return buildSessionFromItems(doc, items, markerStyle, state, parseMs, timings, totalStart);
 }
 
 /**
@@ -451,7 +454,13 @@ export function recomputeDocumentSession(
 ): DocumentSessionResult {
   const totalStart = performance.now();
   const state = sharedState ?? createPseudonymState();
-  return buildSessionFromItems(doc, items, markerStyle, state, 0, 0, totalStart);
+  const zeroTimings: DetectTimings = {
+    scanMs: 0,
+    luhnMs: 0,
+    verhoeffMs: 0,
+    validatorsMs: 0,
+  };
+  return buildSessionFromItems(doc, items, markerStyle, state, 0, zeroTimings, totalStart);
 }
 
 /**

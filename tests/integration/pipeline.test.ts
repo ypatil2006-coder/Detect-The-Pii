@@ -105,6 +105,12 @@ describe('runPipeline integration', () => {
     const luhnStage = out.stages.find((s) => s.id === 'luhn')!;
     expect(luhnStage.matchedCount).toBe(1);
     expect(luhnStage.rejectedCount).toBe(1);
-    expect(out.stages.every((s) => s.durationMs >= 0)).toBe(true);
+    expect(out.stages.every((s) => Number.isFinite(s.durationMs) && s.durationMs >= 0)).toBe(true);
+
+    const csvOut = runPipeline(getSampleById('customers-csv').content, 'csv', 'pseudonym');
+    expect(csvOut.stages).toHaveLength(7);
+    expect(csvOut.stages.every((s) => Number.isFinite(s.durationMs) && s.durationMs >= 0)).toBe(
+      true,
+    );
   });
 });

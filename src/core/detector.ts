@@ -28,6 +28,14 @@ interface CandidateSpan {
   end: number;
 }
 
+/** Real elapsed sub-stage timings (ms) captured during detection. */
+export interface DetectTimings {
+  scanMs: number;
+  luhnMs: number;
+  verhoeffMs: number;
+  validatorsMs: number;
+}
+
 const TYPE_PRIORITY: Record<PiiType, number> = {
   EMAIL: 6,
   CREDIT_CARD: 5,
@@ -85,41 +93,33 @@ function spansOverlap(
 export function detectPii(text: string): {
   matches: PiiMatch[];
   stats: DetectionStats;
+  timings: DetectTimings;
 } {
   const stats = createEmptyStats();
   if (!text) {
-    return { matches: [], stats };
+    return {
+      matches: [],
+      stats,
+      timings: { scanMs: 0, luhnMs: 0, verhoeffMs: 0, validatorsMs: 0 },
+    };
   }
+
+  const scanStart = performance.now();
+  const emailHits = scanMatches(EMAIL_CANDIDATE_REGEX, text);
+  const panHits = scanMatches(PAN_CANDIDATE_REGEX, text);
+  const ipv4Hits = scanMatches(IPV4_CANDIDATE_REGEX, text);
+  const ipv6Hits = scanMatches(IPV6_CANDIDATE_REGEX, text);
+  const cardHits = scanMatches(CARD_CANDIDATE_REGEX, text);
+  const aadhaarHits = scanMatches(AADHAAR_CANDIDATE_REGEX, text);
+  const phoneHits = scanMatches(PHONE_CANDIDATE_REGEX, text);
+  const scanMs = performance.now() - scanStart;
 
   const candidates: CandidateSpan[] = [];
   const rejectedCards: Array<{ start: number; end: number }> = [];
   const rejectedAadhaars: Array<{ start: number; end: number }> = [];
 
-  for (const hit of scanMatches(EMAIL_CANDIDATE_REGEX, text)) {
-    if (isValidEmail(hit.value)) {
-      candidates.push({ type: 'EMAIL', ...hit });
-    }
-  }
-
-  for (const hit of scanMatches(PAN_CANDIDATE_REGEX, text)) {
-    if (isValidPan(hit.value)) {
-      candidates.push({ type: 'PAN', ...hit });
-    }
-  }
-
-  for (const hit of scanMatches(IPV4_CANDIDATE_REGEX, text)) {
-    if (isValidIpv4(hit.value)) {
-      candidates.push({ type: 'IP', ...hit });
-    }
-  }
-
-  for (const hit of scanMatches(IPV6_CANDIDATE_REGEX, text)) {
-    if (isValidIpv6(hit.value)) {
-      candidates.push({ type: 'IP', ...hit });
-    }
-  }
-
-  for (const hit of scanMatches(CARD_CANDIDATE_REGEX, text)) {
+  const luhnStart = performance.now();
+  for (const hit of cardHits) {
     const digitCount = hit.value.replace(/\D/g, '').length;
     if (digitCount < 13 || digitCount > 19) {
       continue;
@@ -130,37 +130,68 @@ export function detectPii(text: string): {
       rejectedCards.push({ start: hit.start, end: hit.end });
     }
   }
+  const luhnMs = performance.now() - luhnStart;
 
-  for (const hit of scanMatches(AADHAAR_CANDIDATE_REGEX, text)) {
+  const verhoeffStart = performance.now();
+  for (const hit of aadhaarHits) {
     if (isValidVerhoeff(hit.value)) {
       candidates.push({ type: 'AADHAAR', ...hit });
     } else {
       rejectedAadhaars.push({ start: hit.start, end: hit.end });
     }
   }
+  const verhoeffMs = performance.now() - verhoeffStart;
 
-  PHONE_CANDIDATE_REGEX.lastIndex = 0;
-  let phoneMatch: RegExpExecArray | null;
-  while ((phoneMatch = PHONE_CANDIDATE_REGEX.exec(text)) !== null) {
-    const raw = phoneMatch[0];
-    if (!raw) {
-      PHONE_CANDIDATE_REGEX.lastIndex++;
-      continue;
+  const validatorsStart = performance.now();
+  for (const hit of emailHits) {
+    if (isValidEmail(hit.value)) {
+      candidates.push({ type: 'EMAIL', ...hit });
     }
-    const acceptedLen = phoneLength(raw);
+  }
+
+  for (const hit of panHits) {
+    if (isValidPan(hit.value)) {
+      candidates.push({ type: 'PAN', ...hit });
+    }
+  }
+
+  for (const hit of ipv4Hits) {
+    if (isValidIpv4(hit.value)) {
+      candidates.push({ type: 'IP', ...hit });
+    }
+  }
+
+  for (const hit of ipv6Hits) {
+    if (isValidIpv6(hit.value)) {
+      candidates.push({ type: 'IP', ...hit });
+    }
+  }
+
+  for (let idx = 0; idx < phoneHits.length; idx++) {
+    const hit = phoneHits[idx];
+    const acceptedLen = phoneLength(hit.value);
     if (acceptedLen !== false && acceptedLen > 0) {
-      const value = raw.slice(0, acceptedLen);
+      const value = hit.value.slice(0, acceptedLen);
       candidates.push({
         type: 'PHONE',
         value,
-        start: phoneMatch.index,
-        end: phoneMatch.index + acceptedLen,
+        start: hit.start,
+        end: hit.start + acceptedLen,
       });
-      if (acceptedLen < raw.length) {
-        PHONE_CANDIDATE_REGEX.lastIndex = phoneMatch.index + acceptedLen;
+      if (acceptedLen < hit.value.length) {
+        PHONE_CANDIDATE_REGEX.lastIndex = hit.start + acceptedLen;
+        const nextHit = PHONE_CANDIDATE_REGEX.exec(text);
+        if (nextHit && nextHit[0] && nextHit.index < (phoneHits[idx + 1]?.start ?? text.length)) {
+          phoneHits.splice(idx + 1, 0, {
+            value: nextHit[0],
+            start: nextHit.index,
+            end: nextHit.index + nextHit[0].length,
+          });
+        }
       }
     }
   }
+  const validatorsMs = performance.now() - validatorsStart;
 
   candidates.sort((a, b) => {
     const lenDiff = b.end - b.start - (a.end - a.start);
@@ -207,7 +238,11 @@ export function detectPii(text: string): {
     (rej) => !accepted.some((acc) => spansOverlap(rej.start, rej.end, acc.start, acc.end)),
   ).length;
 
-  return { matches, stats };
+  return {
+    matches,
+    stats,
+    timings: { scanMs, luhnMs, verhoeffMs, validatorsMs },
+  };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -305,13 +340,21 @@ function resolvePatternOverlaps(cands: PatternCandidate[]): PatternCandidate[] {
   return chosen.sort((a, b) => a.start - b.start);
 }
 
-/** Runs enabled built-in and custom `Pattern[]` rules over `text`, returning `RedactionItem[]`. */
-export function detect(
+/**
+ * Runs enabled built-in and custom `Pattern[]` rules over `text`, returning
+ * `RedactionItem[]` alongside real per-bucket `DetectTimings`.
+ */
+export function detectWithTimings(
   text: string,
   patterns: Pattern[],
   book: CodeBook = new CodeBook(),
-): RedactionItem[] {
+): { items: RedactionItem[]; timings: DetectTimings } {
   const cands: PatternCandidate[] = [];
+  let scanMs = 0;
+  let luhnMs = 0;
+  let verhoeffMs = 0;
+  let validatorsMs = 0;
+
   for (const p of patterns) {
     if (!p.enabled) {
       continue;
@@ -321,14 +364,30 @@ export function detect(
       continue;
     }
     let m: RegExpExecArray | null;
-    while ((m = re.exec(text)) !== null) {
+    while (true) {
+      const execStart = performance.now();
+      m = re.exec(text);
+      scanMs += performance.now() - execStart;
+      if (m === null) {
+        break;
+      }
       if (m[0].length === 0) {
         re.lastIndex++;
         continue;
       }
+      const valStart = performance.now();
       const verdict = p.validate
         ? p.validate(m[0], text.slice(Math.max(0, m.index - 3), m.index))
         : true;
+      const valElapsed = performance.now() - valStart;
+      if (p.category === 'CREDIT_CARD') {
+        luhnMs += valElapsed;
+      } else if (p.category === 'AADHAAR') {
+        verhoeffMs += valElapsed;
+      } else {
+        validatorsMs += valElapsed;
+      }
+
       if (verdict === false || verdict === 0) {
         re.lastIndex = m.index + Math.min(2, m[0].length);
         continue;
@@ -346,9 +405,26 @@ export function detect(
       });
     }
   }
-  return resolvePatternOverlaps(cands).map((c) =>
+
+  const mergeStart = performance.now();
+  const items = resolvePatternOverlaps(cands).map((c) =>
     makeItem(text, c.start, c.end, c.category, book, 'auto', c.retention),
   );
+  scanMs += performance.now() - mergeStart;
+
+  return {
+    items,
+    timings: { scanMs, luhnMs, verhoeffMs, validatorsMs },
+  };
+}
+
+/** Runs enabled built-in and custom `Pattern[]` rules over `text`, returning `RedactionItem[]`. */
+export function detect(
+  text: string,
+  patterns: Pattern[],
+  book: CodeBook = new CodeBook(),
+): RedactionItem[] {
+  return detectWithTimings(text, patterns, book).items;
 }
 
 /** Error thrown when adding or re-activating an item that overlaps an active item. */

@@ -1,5 +1,5 @@
 import { buildMarker } from './codes';
-import { detectPii } from './detector';
+import { detectPii, type DetectTimings } from './detector';
 import {
   createPseudonymState,
   type MappingEntry,
@@ -101,9 +101,9 @@ export function sanitizeTextWithReplacements(
   text: string,
   mode: RedactionMode,
   sharedState?: PseudonymState,
-): { result: SanitizeResult; replacements: string[] } {
+): { result: SanitizeResult; replacements: string[]; timings: DetectTimings } {
   const start = performance.now();
-  const { matches, stats } = detectPii(text);
+  const { matches, stats, timings } = detectPii(text);
   const state = sharedState ?? createPseudonymState();
   const summaryByPlaceholder = new Map<string, PseudonymMapEntry>();
 
@@ -119,6 +119,7 @@ export function sanitizeTextWithReplacements(
         durationMs: performance.now() - start,
       },
       replacements: [],
+      timings,
     };
   }
 
@@ -166,6 +167,7 @@ export function sanitizeTextWithReplacements(
       durationMs: performance.now() - start,
     },
     replacements,
+    timings,
   };
 }
 
