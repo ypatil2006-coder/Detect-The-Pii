@@ -93,6 +93,7 @@ export function App() {
   const [quickPasteText, setQuickPasteText] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [activeStageIndex, setActiveStageIndex] = useState(0);
+  const [checksExpanded, setChecksExpanded] = useState(false);
   const [runId, setRunId] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [hasUnsavedWork, setHasUnsavedWork] = useState(false);
@@ -173,6 +174,16 @@ export function App() {
   );
 
   const inlineUploadRef = useRef<HTMLInputElement | null>(null);
+  const scanTimersRef = useRef<number[]>([]);
+
+  const clearScanTimers = useCallback(() => {
+    for (const timerId of scanTimersRef.current) {
+      window.clearTimeout(timerId);
+    }
+    scanTimersRef.current = [];
+  }, []);
+
+  useEffect(() => () => clearScanTimers(), [clearScanTimers]);
 
   const activeSession = sessions[activeSessionIndex] ?? null;
 
@@ -188,11 +199,44 @@ export function App() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedWork, sessions.length]);
 
+  const startStageProgression = useCallback(
+    (stageCount: number) => {
+      clearScanTimers();
+      const prefersReduced =
+        typeof window !== 'undefined' &&
+        typeof window.matchMedia === 'function' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (prefersReduced) {
+        setActiveStageIndex(stageCount - 1);
+        setIsAnalyzing(false);
+        return;
+      }
+
+      setIsAnalyzing(true);
+      setActiveStageIndex(0);
+      setChecksExpanded(false);
+
+      const stepMs = 75;
+      for (let step = 1; step < stageCount; step += 1) {
+        const timer = window.setTimeout(() => {
+          setActiveStageIndex(step);
+        }, step * stepMs);
+        scanTimersRef.current.push(timer);
+      }
+
+      const finishTimer = window.setTimeout(() => {
+        scanTimersRef.current = [];
+        setActiveStageIndex(stageCount - 1);
+        setIsAnalyzing(false);
+      }, stageCount * stepMs + 45);
+      scanTimersRef.current.push(finishTimer);
+    },
+    [clearScanTimers],
+  );
+
   const runDocuments = useCallback(
     (docs: LoadedDocument[], targetPatterns: Pattern[] = patterns, targetStyle: MarkerStyle = markerStyle) => {
       setErrorMessage(null);
-      setIsAnalyzing(true);
-      setActiveStageIndex(0);
 
       const sharedState = createPseudonymState();
       const nextSessions = docs.map((doc) =>
@@ -206,11 +250,16 @@ export function App() {
       setRunId((id) => id + 1);
 
       const stageCount = nextSessions[0]?.stages.length ?? DEFAULT_IDLE_STAGES.length;
-      setActiveStageIndex(stageCount - 1);
-      setIsAnalyzing(false);
+      startStageProgression(stageCount);
     },
-    [markerStyle, patterns],
+    [markerStyle, patterns, startStageProgression],
   );
+
+  const handleReplayChecks = useCallback(() => {
+    if (!activeSession) return;
+    setRunId((id) => id + 1);
+    startStageProgression(activeSession.stages.length || DEFAULT_IDLE_STAGES.length);
+  }, [activeSession, startStageProgression]);
 
   const handleRunText = useCallback(
     (text: string) => {
@@ -428,6 +477,9 @@ export function App() {
   }, []);
 
   const handleNewSession = useCallback(() => {
+    clearScanTimers();
+    setIsAnalyzing(false);
+    setChecksExpanded(false);
     setSessions([]);
     setActiveSessionIndex(0);
     setActiveSection('workbench');
@@ -435,7 +487,7 @@ export function App() {
     setQuickPasteText('');
     setErrorMessage(null);
     setHasUnsavedWork(false);
-  }, []);
+  }, [clearScanTimers]);
 
   const handleDownloadSanitized = useCallback(async () => {
     if (!activeSession) return;
@@ -717,15 +769,47 @@ export function App() {
               onLoadSample={handleLoadSample}
               isProcessing={isAnalyzing}
             />
-          ) : (
-            <>
+          ) : isAnalyzing ? (
+            <div className="scan-stage-shell">
+              <div className="scan-beam-track" aria-hidden="true">
+                <div
+                  className="scan-beam-fill"
+                  style={{
+                    transform: `scaleX(${Math.min(1, (activeStageIndex + 1) / Math.max(1, activeStages.length))})`,
+                  }}
+                />
+              </div>
+
               <ProgressChecklist
                 stages={activeStages}
                 activeIndex={activeStageIndex}
-                completed={!isAnalyzing}
+                completed={false}
                 totalMs={activeTotalMs}
               />
 
+              <div className="leasing-curtain" aria-hidden="true">
+                <div className="leasing-curtain__header">
+                  <span>Unsealing side-by-side diff &amp; entity highlights…</span>
+                  <span className="tabular-nums">
+                    {Math.min(activeStages.length, activeStageIndex + 1)} / {activeStages.length}
+                  </span>
+                </div>
+                <div className="leasing-curtain__panes">
+                  <div className="leasing-curtain__pane">
+                    <span className="leasing-skeleton-bar" style={{ width: '78%' }} />
+                    <span className="leasing-skeleton-bar" style={{ width: '56%' }} />
+                    <span className="leasing-skeleton-bar" style={{ width: '86%' }} />
+                  </div>
+                  <div className="leasing-curtain__pane">
+                    <span className="leasing-skeleton-bar" style={{ width: '72%' }} />
+                    <span className="leasing-skeleton-bar" style={{ width: '64%' }} />
+                    <span className="leasing-skeleton-bar" style={{ width: '80%' }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div key={`${activeSession.doc.fileName}-${runId}`} className="workbench-leased">
               <DiffSuggestionsView
                 session={activeSession}
                 markerStyle={markerStyle}
@@ -735,6 +819,37 @@ export function App() {
                 onAddManual={handleAddManual}
                 onResetManual={handleResetManual}
               />
+
+              <div className={`checks-dock${checksExpanded ? ' is-expanded' : ' is-collapsed'}`}>
+                <ProgressChecklist
+                  stages={activeStages}
+                  activeIndex={activeStageIndex}
+                  completed
+                  totalMs={activeTotalMs}
+                />
+                <div className="checks-dock__controls">
+                  <span className="checks-dock__timing tabular-nums">
+                    Processed in {activeTotalMs.toFixed(1)} ms
+                  </span>
+                  <div className="checks-dock__actions">
+                    <button
+                      type="button"
+                      className="btn btn-ghost checks-dock__btn"
+                      onClick={handleReplayChecks}
+                    >
+                      Replay scan
+                    </button>
+                    <button
+                      type="button"
+                      className="btn checks-dock__btn"
+                      aria-expanded={checksExpanded}
+                      onClick={() => setChecksExpanded((prev) => !prev)}
+                    >
+                      {checksExpanded ? 'Hide checks' : 'Inspect checks'}
+                    </button>
+                  </div>
+                </div>
+              </div>
 
               <form className="inline-composer-bar" onSubmit={handleQuickPasteSubmit}>
                 <input
@@ -777,7 +892,7 @@ export function App() {
                   Run
                 </button>
               </form>
-            </>
+            </div>
           )}
         </div>
       </main>
@@ -786,6 +901,8 @@ export function App() {
         <AuditPanel
           session={activeSession}
           markerStyle={markerStyle}
+          isAnalyzing={isAnalyzing}
+          runId={runId}
           onClose={() => setAuditOpen(false)}
         />
       )}

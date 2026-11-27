@@ -86,7 +86,6 @@ export function ProgressChecklist({
 
       <div className="progress-card__footer">
         <span>Total: {formatMs(totalMs)}</span>
-        <span>100% browser-local · Zero egress</span>
       </div>
     </section>
   );

@@ -191,11 +191,6 @@ export function Sidebar({
           })
         )}
       </div>
-
-      <div className="sidebar-footer">
-        <span className="status-dot" aria-hidden="true" />
-        <span>Zero external data egress</span>
-      </div>
     </nav>
   );
 }

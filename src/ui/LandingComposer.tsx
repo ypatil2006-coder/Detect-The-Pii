@@ -111,11 +111,8 @@ export function LandingComposer({
     <section className="landing-stage" aria-labelledby="landing-heading">
       <div className="landing-header" data-enter="1">
         <h1 id="landing-heading" className="landing-title">
-          Client-Side PII Sanitizer
+          PII Guard
         </h1>
-        <p className="landing-subtitle">
-          Paste logs or drop .txt, .md, .csv, .docx, .xlsx, or .pdf files — processed locally in your browser.
-        </p>
       </div>
 
       <form
@@ -132,9 +129,10 @@ export function LandingComposer({
         <textarea
           id="landing-text-input"
           className="composer-textarea"
+          rows={1}
           value={draftText}
           onChange={(e) => onDraftChange(e.target.value)}
-          placeholder="Paste raw logs, clinical notes, CSV rows, or drop up to 10 documents here..."
+          placeholder="Paste logs, clinical notes, CSV rows, or drop up to 10 documents here..."
           disabled={isProcessing}
         />
 
@@ -246,11 +244,6 @@ export function LandingComposer({
             )}
           </div>
         </div>
-
-        <p className="privacy-pill">
-          <span className="status-dot" aria-hidden="true" />
-          <span>100% browser-local · Email, Phone, IP, PAN, Aadhaar &amp; Luhn Cards · Zero server egress</span>
-        </p>
       </div>
     </section>
   );

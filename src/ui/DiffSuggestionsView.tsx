@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useState, type CSSProperties, type FormEvent } from 'react';
 import type { DocumentSessionResult } from '../core/document-pipeline';
 import { previewLabel } from '../core/redactor';
 import {
@@ -226,9 +226,10 @@ export function DiffSuggestionsView({
                   <span className="diff-line-text">No changed lines match the current filter.</span>
                 </div>
               ) : (
-                visibleRows.map((row) => (
+                visibleRows.map((row, rowIdx) => (
                   <div
                     key={`orig-${row.lineNumber}`}
+                    style={{ '--row-index': rowIdx } as CSSProperties}
                     className={`diff-row ${row.hasChanges ? 'has-changes' : ''} ${
                       highlightedLine === row.lineNumber ? 'is-highlighted' : ''
                     }`}
@@ -245,21 +246,22 @@ export function DiffSuggestionsView({
             </div>
           </div>
 
-          <div className="diff-pane" aria-label="Sanitized output">
+          <div className="diff-pane diff-pane--sanitized" aria-label="Sanitized output">
             <div className="diff-pane__header">
               <span>Sanitized Output</span>
               <span>{markerStyle}</span>
             </div>
-            <div className="diff-pane__lines">
+            <div key={`san-lines-${markerStyle}`} className="diff-pane__lines diff-pane__lines--morph">
               {visibleRows.length === 0 ? (
                 <div className="diff-row">
                   <span className="diff-line-no">—</span>
                   <span className="diff-line-text">No sanitized changes on visible lines.</span>
                 </div>
               ) : (
-                visibleRows.map((row) => (
+                visibleRows.map((row, rowIdx) => (
                   <div
                     key={`san-${row.lineNumber}`}
+                    style={{ '--row-index': rowIdx } as CSSProperties}
                     className={`diff-row ${row.hasChanges ? 'has-changes' : ''} ${
                       highlightedLine === row.lineNumber ? 'is-highlighted' : ''
                     }`}
@@ -318,82 +320,86 @@ export function DiffSuggestionsView({
             </div>
           )}
 
-          {session.items.length === 0 ? (
-            <p className="rule-row__note">
-              No automatic PII matches found. Add a manual redaction below if needed.
-            </p>
-          ) : (
-            <ul className="suggestions-list">
-              {session.items.map((item) => (
-                <li
-                  key={item.id}
-                  className={`suggestion-item ${item.active ? '' : 'is-inactive'} ${
-                    selectedItemId === item.id ? 'is-selected' : ''
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    className="suggestion-check"
-                    checked={item.active}
-                    aria-label={`Toggle redaction for ${item.category}: ${item.original}`}
-                    onChange={() => handleToggleItemSafe(item.id)}
-                  />
-                  <div className="suggestion-item__body">
-                    <button
-                      type="button"
-                      className="suggestion-item__jump"
-                      onClick={() => handleJumpToItem(item)}
-                      title={`Jump to line ${lineNumberAt(lineStarts, item.start)}`}
+          <div className="suggestions-body-grid">
+            <div className="suggestions-list-wrap">
+              {session.items.length === 0 ? (
+                <p className="rule-row__note">
+                  No automatic PII matches found. Add a manual redaction beside if needed.
+                </p>
+              ) : (
+                <ul className="suggestions-list">
+                  {session.items.map((item) => (
+                    <li
+                      key={item.id}
+                      className={`suggestion-item ${item.active ? '' : 'is-inactive'} ${
+                        selectedItemId === item.id ? 'is-selected' : ''
+                      }`}
                     >
-                      {item.original}
-                    </button>
-                    <div className="suggestion-item__meta">
-                      <span className="pii-pill__tag">{item.category}</span>
-                      <span>→ {previewLabel(item, markerStyle)}</span>
-                      {item.origin === 'manual' && <span>· manual</span>}
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <form className="manual-add-form" onSubmit={handleManualSubmit}>
-            <h4 className="manual-add-form__title">Add Manual Redaction</h4>
-            <label htmlFor="manual-pii-text" className="rule-row__note">
-              Highlight text in Original Input or enter exact phrase:
-            </label>
-            <input
-              id="manual-pii-text"
-              type="text"
-              className="ui-input"
-              placeholder="e.g. Project Falcon"
-              value={manualText}
-              onChange={(e) => setManualText(e.target.value)}
-            />
-            <div className="manual-add-form__row">
-              <select
-                aria-label="Manual redaction category"
-                className="ui-select"
-                value={manualCategory}
-                onChange={(e) => setManualCategory(e.target.value as ExtendedCategory)}
-              >
-                {EXTENDED_CATEGORIES.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
-              </select>
-              <button type="submit" className="ui-btn ui-btn--primary ui-btn--sm">
-                Add
-              </button>
+                      <input
+                        type="checkbox"
+                        className="suggestion-check"
+                        checked={item.active}
+                        aria-label={`Toggle redaction for ${item.category}: ${item.original}`}
+                        onChange={() => handleToggleItemSafe(item.id)}
+                      />
+                      <div className="suggestion-item__body">
+                        <button
+                          type="button"
+                          className="suggestion-item__jump"
+                          onClick={() => handleJumpToItem(item)}
+                          title={`Jump to line ${lineNumberAt(lineStarts, item.start)}`}
+                        >
+                          {item.original}
+                        </button>
+                        <div className="suggestion-item__meta">
+                          <span className="pii-pill__tag">{item.category}</span>
+                          <span>→ {previewLabel(item, markerStyle)}</span>
+                          {item.origin === 'manual' && <span>· manual</span>}
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-            {manualError && (
-              <div className="ui-alert" role="alert">
-                {manualError}
+
+            <form className="manual-add-form" onSubmit={handleManualSubmit}>
+              <h4 className="manual-add-form__title">Add Manual Redaction</h4>
+              <label htmlFor="manual-pii-text" className="rule-row__note">
+                Highlight text in Original Input or enter exact phrase:
+              </label>
+              <input
+                id="manual-pii-text"
+                type="text"
+                className="ui-input"
+                placeholder="e.g. Project Falcon"
+                value={manualText}
+                onChange={(e) => setManualText(e.target.value)}
+              />
+              <div className="manual-add-form__row">
+                <select
+                  aria-label="Manual redaction category"
+                  className="ui-select"
+                  value={manualCategory}
+                  onChange={(e) => setManualCategory(e.target.value as ExtendedCategory)}
+                >
+                  {EXTENDED_CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+                <button type="submit" className="ui-btn ui-btn--primary ui-btn--sm">
+                  Add
+                </button>
               </div>
-            )}
-          </form>
+              {manualError && (
+                <div className="ui-alert" role="alert">
+                  {manualError}
+                </div>
+              )}
+            </form>
+          </div>
         </aside>
       </div>
     </section>

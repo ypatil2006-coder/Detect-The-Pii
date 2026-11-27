@@ -53,7 +53,10 @@ describe('PII Sanitizer Workbench UI Integration', () => {
     expect(screen.getByRole('main')).toBeInTheDocument();
     expect(screen.queryByRole('complementary', { name: /audit dashboard/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/awaiting input/i)).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1, name: /client-side pii sanitizer/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: /pii guard/i })).toBeInTheDocument();
+    expect(screen.queryByText(/your data never leaves your browser\./i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/zero external data egress/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/100% browser-local/i)).not.toBeInTheDocument();
     expect(screen.getByRole('status')).toBeInTheDocument();
 
     const moreFormatsBtn = screen.getByRole('button', { name: /more formats/i });
@@ -64,10 +67,13 @@ describe('PII Sanitizer Workbench UI Integration', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /support log/i }));
 
-    const checklist = await screen.findByRole('region', { name: /sanitization progress checklist/i });
-    expect(within(checklist).getByText(/7 steps · Completed/i)).toBeInTheDocument();
+    // Live progressive check stage runs before leasing out the spacious diff
+    const runningChecklist = screen.getByRole('region', { name: /sanitization progress checklist/i });
+    expect(within(runningChecklist).getByText(/7 steps · Analysis/i)).toBeInTheDocument();
 
-    const diffView = screen.getByRole('region', { name: /side-by-side diff/i });
+    const diffView = await screen.findByRole('region', { name: /side-by-side diff/i }, { timeout: 2500 });
+    const checklist = screen.getByRole('region', { name: /sanitization progress checklist/i });
+    expect(within(checklist).getByText(/7 steps · Completed/i)).toBeInTheDocument();
     expect(within(diffView).getByLabelText(/^Original input$/i)).toBeInTheDocument();
     expect(within(diffView).getByLabelText(/^Sanitized output$/i)).toBeInTheDocument();
     expect(within(diffView).getAllByText('USER_01').length).toBeGreaterThanOrEqual(1);
