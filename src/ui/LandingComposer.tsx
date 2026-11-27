@@ -109,7 +109,7 @@ export function LandingComposer({
 
   return (
     <section className="landing-stage" aria-labelledby="landing-heading">
-      <div className="landing-header">
+      <div className="landing-header" data-enter="1">
         <h1 id="landing-heading" className="landing-title">
           Client-Side PII Sanitizer
         </h1>
@@ -120,6 +120,7 @@ export function LandingComposer({
 
       <form
         className={`composer-card${isDragging ? ' is-dragging' : ''}`}
+        data-enter="2"
         onSubmit={handleSubmit}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -194,7 +195,7 @@ export function LandingComposer({
         </div>
       </form>
 
-      <div className="landing-sample-bar" aria-label="Quick sample datasets">
+      <div className="landing-sample-bar" data-enter="3" aria-label="Quick sample datasets">
         <div className="landing-sample-row">
           {PRIMARY_SAMPLES.map((sample) => (
             <button

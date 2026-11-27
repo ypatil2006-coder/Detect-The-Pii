@@ -49,6 +49,7 @@
 
 @media (hover: hover) and (pointer: fine) {
   .ui-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
     border-color: var(--border-strong, rgba(255, 255, 255, 0.16));
     background: rgba(255, 255, 255, 0.08);
   }
@@ -259,11 +260,12 @@
   border-radius: 12px;
   border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
   background: var(--bg-elevated, #232327);
-  transition: border-color 150ms ease, background-color 150ms ease, opacity 180ms var(--ease-out), transform 180ms var(--ease-arrive);
+  transition: border-color 150ms var(--ease-out), background-color 150ms var(--ease-out), transform 180ms var(--ease-out);
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .pipeline-node:hover {
+  .pipeline-node-slot:hover .pipeline-node {
+    transform: translateY(-2px);
     border-color: var(--border-strong, rgba(255, 255, 255, 0.16));
     background: #27272c;
   }
@@ -399,6 +401,11 @@
 
 .pipeline-connector-path.is-done {
   stroke: rgba(34, 197, 94, 0.72);
+}
+
+.pipeline-pulse-dot {
+  fill: var(--accent, #3b82f6);
+  opacity: 0.95;
 }
 
 @keyframes pipeline-dash-flow {
@@ -684,7 +691,7 @@
 }
 
 .diff-mode-pill:active {
-  transform: scale(0.98);
+  transform: scale(0.97);
 }
 
 .diff-mode-pill[aria-checked='true'] {
@@ -1066,7 +1073,7 @@
 }
 
 .rules-tab:active {
-  transform: scale(0.98);
+  transform: scale(0.97);
 }
 
 .rules-tab[aria-selected='true'] {
@@ -1198,9 +1205,23 @@
   }
 }
 
+@media (max-width: 640px) {
+  .progress-item {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .progress-item__label {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ui-btn,
   .pipeline-node,
+  .pipeline-node-slot,
   .pipeline-connector-path,
   .progress-item,
   .diff-mode-pill,
@@ -1212,12 +1233,18 @@
     animation: none !important;
   }
 
+  .pipeline-pulse-dot {
+    display: none;
+  }
+
   .ui-btn:hover,
   .ui-btn:active:not(:disabled),
+  .pipeline-node-slot:hover .pipeline-node,
   .diff-mode-pill:hover,
   .diff-mode-pill:active,
   .cat-toggle-chip:hover,
   .cat-toggle-chip:active,
+  .rules-tab:hover,
   .rules-tab:active {
     transform: none;
   }

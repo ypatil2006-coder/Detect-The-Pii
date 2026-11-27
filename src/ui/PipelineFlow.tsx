@@ -95,15 +95,15 @@ function PipelineNodeCard({
   const statusLabel = done ? 'MATCHED' : active ? 'RUNNING' : 'IDLE';
 
   return (
-    <div className={`pipeline-node-slot ${branch ? 'pipeline-node-slot--branch' : ''}`}>
+    <div
+      className={`pipeline-node-slot ${branch ? 'pipeline-node-slot--branch' : ''}`}
+      style={{
+        opacity,
+        transform: `scale(${scale.toFixed(4)})`,
+      }}
+    >
       <span className={`pipeline-role-tag ${roleClass}`}>{role}</span>
-      <div
-        className={`pipeline-node ${active ? 'is-active' : ''} ${done ? 'is-done' : ''}`}
-        style={{
-          opacity,
-          transform: `scale(${scale.toFixed(4)})`,
-        }}
-      >
+      <div className={`pipeline-node ${active ? 'is-active' : ''} ${done ? 'is-done' : ''}`}>
         <div className="pipeline-node__head">
           <div className="pipeline-node__title-wrap">
             <span className="pipeline-node__icon" aria-hidden="true">
@@ -290,6 +290,14 @@ export function PipelineFlow({ stages, totalMs, isRunning, runId }: PipelineFlow
               frame >= 18 ? 'is-done' : frame > 8 ? 'is-active' : ''
             }`}
           />
+          {!prefersReducedMotion() && frame > 8 && frame < 18 && (
+            <circle
+              cx={360}
+              cy={interpolate(frame, [8, 18], [2, 28], arriveEase)}
+              r={3.5}
+              className="pipeline-pulse-dot"
+            />
+          )}
         </svg>
 
         <PipelineNodeCard
@@ -425,6 +433,14 @@ export function PipelineFlow({ stages, totalMs, isRunning, runId }: PipelineFlow
               frame >= 105 ? 'is-done' : frame >= 82 ? 'is-active' : ''
             }`}
           />
+          {!prefersReducedMotion() && frame >= 82 && frame < 105 && (
+            <circle
+              cx={360}
+              cy={interpolate(frame, [82, 105], [2, 28], arriveEase)}
+              r={3.5}
+              className="pipeline-pulse-dot"
+            />
+          )}
         </svg>
 
         <PipelineNodeCard

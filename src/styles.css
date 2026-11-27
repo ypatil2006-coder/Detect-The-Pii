@@ -26,6 +26,8 @@
   --radius-lg: 14px;
   --radius-pill: 999px;
   --shadow-elevated: 0 12px 32px rgba(0, 0, 0, 0.44);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --sidebar-width: 244px;
   --audit-width: 328px;
 }
@@ -111,7 +113,7 @@ body {
   font-weight: 600;
   border-radius: var(--radius-sm);
   text-decoration: none;
-  transition: top 140ms ease-out;
+  transition: top 140ms var(--ease-out);
 }
 
 .skip-link:focus {
@@ -217,11 +219,11 @@ body {
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 150ms cubic-bezier(0.22, 1, 0.36, 1), background-color 150ms ease, box-shadow 180ms ease;
+  transition: transform 140ms var(--ease-out), background-color 150ms ease, box-shadow 180ms ease;
 }
 
 .new-session-btn:active {
-  transform: scale(0.985);
+  transform: scale(0.97);
 }
 
 .sidebar-nav {
@@ -245,11 +247,11 @@ body {
   font-weight: 500;
   text-align: left;
   cursor: pointer;
-  transition: transform 150ms cubic-bezier(0.22, 1, 0.36, 1), background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+  transition: transform 140ms var(--ease-out), background-color 150ms ease, color 150ms ease, border-color 150ms ease;
 }
 
 .nav-item:active {
-  transform: scale(0.985);
+  transform: scale(0.97);
 }
 
 .nav-item[aria-current='page'] {
@@ -298,7 +300,11 @@ body {
   border: 1px solid transparent;
   background: transparent;
   padding: 2px 4px;
-  transition: transform 150ms cubic-bezier(0.22, 1, 0.36, 1), background-color 150ms ease, border-color 150ms ease;
+  transition: transform 140ms var(--ease-out), background-color 150ms ease, border-color 150ms ease;
+}
+
+.session-item:active {
+  transform: scale(0.97);
 }
 
 .session-item.is-active {
@@ -480,11 +486,11 @@ body {
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
-  transition: transform 150ms cubic-bezier(0.22, 1, 0.36, 1), border-color 150ms ease, background-color 150ms ease, box-shadow 180ms ease;
+  transition: transform 140ms var(--ease-out), border-color 150ms ease, background-color 150ms ease, box-shadow 180ms ease;
 }
 
 .btn:active:not(:disabled) {
-  transform: scale(0.985);
+  transform: scale(0.97);
 }
 
 .btn:disabled {
@@ -613,6 +619,29 @@ body {
   text-wrap: pretty;
 }
 
+[data-enter] {
+  animation: enter-rise 240ms var(--ease-out) both;
+}
+
+[data-enter='2'] {
+  animation-delay: 50ms;
+}
+
+[data-enter='3'] {
+  animation-delay: 100ms;
+}
+
+@keyframes enter-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .composer-card {
   width: 100%;
   background:
@@ -624,7 +653,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  transition: background 180ms ease, box-shadow 180ms ease, transform 150ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: background 180ms ease, box-shadow 180ms ease, transform 150ms var(--ease-out);
 }
 
 .composer-card:focus-within,
@@ -719,11 +748,11 @@ body {
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  transition: transform 150ms cubic-bezier(0.22, 1, 0.36, 1), border-color 150ms ease, background-color 150ms ease, color 150ms ease, box-shadow 180ms ease;
+  transition: transform 140ms var(--ease-out), border-color 150ms ease, background-color 150ms ease, color 150ms ease, box-shadow 180ms ease;
 }
 
 .sample-chip:active:not(:disabled) {
-  transform: scale(0.985);
+  transform: scale(0.97);
 }
 
 .more-formats-wrap {
@@ -751,17 +780,15 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  animation: popover-in 150ms cubic-bezier(0.22, 1, 0.36, 1);
+  opacity: 1;
+  transform: none;
+  transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out);
 }
 
-@keyframes popover-in {
-  from {
+@starting-style {
+  .more-formats-menu {
     opacity: 0;
-    transform: translateY(-4px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: scale(0.95) translateY(-4px);
   }
 }
 
@@ -779,7 +806,7 @@ body {
   font-weight: 500;
   text-align: left;
   cursor: pointer;
-  transition: background-color 120ms ease, color 120ms ease;
+  transition: transform 140ms var(--ease-out), background-color 120ms ease, color 120ms ease;
 }
 
 .more-formats-item:hover:not(:disabled) {
@@ -788,7 +815,7 @@ body {
 }
 
 .more-formats-item:active:not(:disabled) {
-  transform: scale(0.985);
+  transform: scale(0.97);
 }
 
 .privacy-pill {
@@ -908,7 +935,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  transition: transform 150ms cubic-bezier(0.22, 1, 0.36, 1), border-color 150ms ease, background-color 150ms ease, box-shadow 180ms ease;
+  transition: transform 150ms var(--ease-out), border-color 150ms ease, background-color 150ms ease, box-shadow 180ms ease;
 }
 
 .audit-stat-label {
@@ -1037,7 +1064,8 @@ body {
   padding: 20px;
 }
 
-.modal-dialog {
+.modal-dialog,
+.modal-card {
   width: 100%;
   max-width: 720px;
   max-height: 85vh;
@@ -1048,6 +1076,18 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transform-origin: center;
+  opacity: 1;
+  transform: none;
+  transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out);
+}
+
+@starting-style {
+  .modal-dialog,
+  .modal-card {
+    opacity: 0;
+    transform: scale(0.96);
+  }
 }
 
 .modal-header {
@@ -1150,7 +1190,7 @@ body {
     bottom: 0;
     width: min(276px, 86vw);
     transform: translateX(-100%);
-    transition: transform 180ms ease-out;
+    transition: transform 200ms var(--ease-out);
     box-shadow: var(--shadow-elevated);
   }
 
@@ -1256,7 +1296,26 @@ body {
   .audit-stat-card:hover {
     border-color: var(--border-strong);
     background: var(--bg-elevated);
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+  }
+}
+
+@media (max-width: 640px) {
+  .topbar {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .topbar-left {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .topbar-actions {
+    width: 100%;
+    justify-content: flex-start;
   }
 }
 
@@ -1279,10 +1338,29 @@ body {
     scroll-behavior: auto;
   }
 
-  .sidebar,
-  .skip-link,
-  .more-formats-menu {
-    animation-duration: 0.01ms !important;
+  [data-enter] {
+    animation: enter-fade 160ms ease both;
+  }
+
+  @keyframes enter-fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @starting-style {
+    .more-formats-menu,
+    .modal-dialog,
+    .modal-card {
+      opacity: 0;
+      transform: none;
+    }
+  }
+
+  .sidebar {
     transition-duration: 0.01ms !important;
   }
 
@@ -1294,6 +1372,7 @@ body {
   .audit-stat-card:hover,
   .new-session-btn:active,
   .nav-item:active,
+  .session-item:active,
   .btn:active,
   .sample-chip:active,
   .more-formats-item:active {

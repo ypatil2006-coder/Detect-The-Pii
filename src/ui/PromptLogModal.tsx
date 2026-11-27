@@ -32,7 +32,7 @@ export function PromptLogModal({ open, onClose }: PromptLogModalProps) {
       }}
     >
       <div
-        className="modal-dialog"
+        className="modal-dialog modal-card"
         role="dialog"
         aria-modal="true"
         aria-labelledby="prompt-log-title"
