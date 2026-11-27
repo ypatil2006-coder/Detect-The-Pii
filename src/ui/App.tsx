@@ -1,4 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type MouseEvent,
+} from 'react';
+import { flushSync } from 'react-dom';
 import { CodeBook } from '../core/codes';
 import { addManualItem, toggleItem } from '../core/detector';
 import {
@@ -35,6 +45,20 @@ import { ProgressChecklist } from './ProgressChecklist';
 import { PromptLogModal } from './PromptLogModal';
 import { RulesRestorePanel } from './RulesRestorePanel';
 import { Sidebar, type NavSection } from './Sidebar';
+
+type ThemeMode = 'dark' | 'light';
+const THEME_STORAGE_KEY = 'pii-sanitizer-theme';
+
+function readInitialTheme(): ThemeMode {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return window.localStorage.getItem(THEME_STORAGE_KEY) === 'light' ? 'light' : 'dark';
+    }
+  } catch {
+    // Ignore storage restrictions
+  }
+  return 'dark';
+}
 
 function triggerDownload(blob: Blob, fileName: string): void {
   const url = URL.createObjectURL(blob);
@@ -77,6 +101,76 @@ export function App() {
   );
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [promptLogOpen, setPromptLogOpen] = useState(false);
+  const [theme, setTheme] = useState<ThemeMode>(readInitialTheme);
+
+  useLayoutEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) {
+      meta.setAttribute('content', theme === 'light' ? '#f8f9fb' : '#121214');
+    }
+    try {
+      window.localStorage?.setItem(THEME_STORAGE_KEY, theme);
+    } catch {
+      // Ignore storage restrictions
+    }
+  }, [theme]);
+
+  const handleToggleTheme = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
+      const nextTheme: ThemeMode = theme === 'dark' ? 'light' : 'dark';
+      const prefersReduced =
+        typeof window !== 'undefined' &&
+        typeof window.matchMedia === 'function' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const docWithTransition = document as Document & {
+        startViewTransition?: (cb: () => void) => { ready: Promise<void> };
+      };
+
+      if (prefersReduced || typeof docWithTransition.startViewTransition !== 'function') {
+        setTheme(nextTheme);
+        return;
+      }
+
+      const rect = event.currentTarget.getBoundingClientRect();
+      const x = rect.width > 0 ? rect.left + rect.width / 2 : window.innerWidth - 48;
+      const y = rect.height > 0 ? rect.top + rect.height / 2 : 24;
+      const endRadius = Math.hypot(
+        Math.max(x, window.innerWidth - x),
+        Math.max(y, window.innerHeight - y),
+      );
+
+      try {
+        const transition = docWithTransition.startViewTransition(() => {
+          flushSync(() => {
+            setTheme(nextTheme);
+          });
+        });
+        transition.ready
+          .then(() => {
+            document.documentElement.animate(
+              {
+                clipPath: [
+                  `circle(0px at ${x}px ${y}px)`,
+                  `circle(${endRadius}px at ${x}px ${y}px)`,
+                ],
+              },
+              {
+                duration: 280,
+                easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
+                pseudoElement: '::view-transition-new(root)',
+              },
+            );
+          })
+          .catch(() => {
+            // Fallback cleanly if animation is skipped
+          });
+      } catch {
+        setTheme(nextTheme);
+      }
+    },
+    [theme],
+  );
 
   const inlineUploadRef = useRef<HTMLInputElement | null>(null);
 
@@ -552,6 +646,30 @@ export function App() {
                 {auditOpen ? 'Hide Audit' : 'Show Audit'}
               </button>
             )}
+
+            <button
+              type="button"
+              role="switch"
+              aria-checked={theme === 'light'}
+              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+              className={`theme-toggle${theme === 'light' ? ' is-light' : ''}`}
+              onClick={handleToggleTheme}
+            >
+              <span className="theme-toggle__thumb" aria-hidden="true" />
+              <span className={`theme-toggle__option${theme === 'dark' ? ' is-active' : ''}`}>
+                <svg className="theme-toggle__icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+                </svg>
+                <span>Dark</span>
+              </span>
+              <span className={`theme-toggle__option${theme === 'light' ? ' is-active' : ''}`}>
+                <svg className="theme-toggle__icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="4" />
+                  <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+                </svg>
+                <span>Light</span>
+              </span>
+            </button>
           </div>
         </header>
 

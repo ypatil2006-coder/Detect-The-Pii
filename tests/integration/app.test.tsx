@@ -288,4 +288,30 @@ describe('PII Sanitizer Workbench UI Integration', () => {
       expect(createObjectUrlSpy.mock.calls.length).toBeGreaterThanOrEqual(3);
     });
   });
+
+  it('toggles between dark and light theme, persists preference, and keeps sanitization controls accessible', async () => {
+    render(<App />);
+
+    expect(document.documentElement.dataset.theme).toBe('dark');
+
+    const themeSwitch = screen.getByRole('switch', { name: /switch to light theme/i });
+    expect(themeSwitch).toHaveAttribute('aria-checked', 'false');
+
+    fireEvent.click(themeSwitch);
+    expect(document.documentElement.dataset.theme).toBe('light');
+    expect(window.localStorage.getItem('pii-sanitizer-theme')).toBe('light');
+    expect(screen.getByRole('switch', { name: /switch to dark theme/i })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+
+    // Ensure sanitization works cleanly in light mode
+    fireEvent.click(screen.getByRole('button', { name: /support log/i }));
+    const diffRegion = await screen.findByRole('region', { name: /side-by-side diff/i });
+    expect(within(diffRegion).getAllByText('USER_01').length).toBeGreaterThanOrEqual(1);
+
+    fireEvent.click(screen.getByRole('switch', { name: /switch to dark theme/i }));
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(window.localStorage.getItem('pii-sanitizer-theme')).toBe('dark');
+  });
 });
