@@ -1,5 +1,7 @@
 # Client-Side Browser PII Data Sanitizer
 
+[![LinkedIn Demo Post](https://img.shields.io/badge/LinkedIn-Demo%20Post-0A66C2?logo=linkedin)](https://lnkd.in/p/gSGKUmN5)
+
 > **Deployment Note (Vercel Primary Hosting):** Although the evaluation template (`criteria.md`) lists Google Cloud Run by default, no Google Cloud tokens/credits were provisioned and any hosting platform is permitted. This project is deployed on **Vercel** (`vercel.json` + static Vite `dist/` bundle with zero serverless egress), while retaining full locally verified Docker / Cloud Run parity (`Dockerfile`, `nginx.conf`, `cloudbuild.yaml`, `$PORT=8080`, `/healthz`).
 
 A 100% browser-based, zero-external-egress Personally Identifiable Information (PII) detection, validation, redaction, and restoration tool built for the **PromptWars × NIAT Pune (Google for Developers × H2S — Build with AI)** hackathon.
