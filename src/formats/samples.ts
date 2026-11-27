@@ -1,3 +1,6 @@
+import JSZip from 'jszip';
+import { PDFDocument, StandardFonts } from 'pdf-lib';
+
 export interface SamplePreset {
   id: string;
   label: string;
@@ -5,6 +8,15 @@ export interface SamplePreset {
   description: string;
   content: string;
 }
+
+export const MARKDOWN_SAMPLE_TEXT = [
+  '# Incident Escalation Brief',
+  '',
+  '- **Reporter:** `rahul.sharma@acme.example` (`+91 98765 43210`)',
+  '- **PAN / Aadhaar:** `ABCPA1234F` / `2345 6789 0124`',
+  '- **Card (Luhn):** `4111-1111-1111-1111` | **Order Ref (non-Luhn):** `1234-5678-9012-3456`',
+  '- **Source IP:** `192.168.10.42`',
+].join('\n');
 
 export const SAMPLE_PRESETS: SamplePreset[] = [
   {
@@ -59,4 +71,102 @@ export function getSampleById(id: string): SamplePreset {
     throw new Error(`Unknown sample preset: ${id}`);
   }
   return preset;
+}
+
+function escapeXml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/** Builds a synthetic `.docx` sample File in memory for 1-click multi-format demos and tests. */
+export async function buildSampleDocxFile(fileName = 'sample-audit.docx'): Promise<File> {
+  const zip = new JSZip();
+  zip.file(
+    '[Content_Types].xml',
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`,
+  );
+  zip.file(
+    '_rels/.rels',
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`,
+  );
+  const paragraphs = SAMPLE_PRESETS[0].content
+    .split('\n')
+    .map((line) => `<w:p><w:r><w:t>${escapeXml(line)}</w:t></w:r></w:p>`)
+    .join('');
+  zip.file(
+    'word/document.xml',
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${paragraphs}</w:body></w:document>`,
+  );
+  const bytes = await zip.generateAsync({ type: 'uint8array' });
+  return new File([bytes as BlobPart], fileName, {
+    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  });
+}
+
+/** Builds a synthetic `.xlsx` sample File in memory for 1-click multi-format demos and tests. */
+export async function buildSampleXlsxFile(fileName = 'sample-customers.xlsx'): Promise<File> {
+  const zip = new JSZip();
+  zip.file(
+    'xl/workbook.xml',
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets><sheet name="Customers" sheetId="1" r:id="rId1"/></sheets>
+</workbook>`,
+  );
+  zip.file(
+    'xl/_rels/workbook.xml.rels',
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+</Relationships>`,
+  );
+  const rowsXml = [
+    ['Customer', 'Email', 'PAN', 'Aadhaar', 'Card'],
+    ['Rahul Sharma', 'rahul.sharma@acme.example', 'ABCPA1234F', '2345 6789 0124', '4111-1111-1111-1111'],
+    ['Priya Nair', 'priya.nair@acme.example', 'PQRTF5678M', '6789 1234 5675', '1234567890123456'],
+  ]
+    .map((cells, rIdx) => {
+      const rowNum = rIdx + 1;
+      const cellXml = cells
+        .map((val, cIdx) => {
+          const col = String.fromCharCode(65 + cIdx);
+          return `<c r="${col}${rowNum}" t="inlineStr"><is><t>${escapeXml(val)}</t></is></c>`;
+        })
+        .join('');
+      return `<row r="${rowNum}">${cellXml}</row>`;
+    })
+    .join('');
+  zip.file(
+    'xl/worksheets/sheet1.xml',
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${rowsXml}</sheetData></worksheet>`,
+  );
+  const bytes = await zip.generateAsync({ type: 'uint8array' });
+  return new File([bytes as BlobPart], fileName, {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+}
+
+/** Builds a synthetic text-layer `.pdf` sample File in memory without network calls. */
+export async function buildSamplePdfFile(fileName = 'sample-ticket.pdf'): Promise<File> {
+  const pdf = await PDFDocument.create();
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  const page = pdf.addPage([595, 842]);
+  SAMPLE_PRESETS[0].content.split('\n').forEach((line, i) => {
+    page.drawText(line, { x: 40, y: 780 - i * 20, size: 10, font });
+  });
+  const bytes = await pdf.save();
+  return new File([bytes as BlobPart], fileName, { type: 'application/pdf' });
 }

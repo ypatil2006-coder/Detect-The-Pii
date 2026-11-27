@@ -1,13 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import {
+  birthYearSplit,
+  ibanLength,
+  isCardNumber,
+  isValidDob,
   isValidEmail,
   isValidIpv4,
   isValidIpv6,
   isValidLuhn,
   isValidPan,
   isValidPhone,
+  isValidSsn,
   isValidVerhoeff,
   normalizeEntityValue,
+  phoneLength,
+  phonePrefixLength,
 } from '../../../src/core/validators';
 
 describe('isValidLuhn', () => {
@@ -135,5 +142,68 @@ describe('normalizeEntityValue', () => {
     expect(normalizeEntityValue('PHONE', '9876543210')).toBe('+919876543210');
     expect(normalizeEntityValue('PAN', 'abcpa1234f')).toBe('ABCPA1234F');
     expect(normalizeEntityValue('IP', 'FE80::1')).toBe('fe80::1');
+  });
+});
+
+describe('extended validators (phoneLength, cards, SSN, IBAN, IPv6, DOB)', () => {
+  it('accepts US dashed/dotted phones and drops trailing non-phone digits via phoneLength', () => {
+    expect(isValidPhone('415-867-5309')).toBe(true);
+    expect(isValidPhone('415.867.5309')).toBe(true);
+    expect(isValidPhone('(416) 967-1111')).toBe(true);
+    expect(isValidPhone('+44 20 7946 0958')).toBe(true);
+    expect(isValidPhone('+1 555 555 0100')).toBe(false);
+    expect(isValidPhone('123-456-7890')).toBe(false);
+
+    expect(phoneLength('+44 20 7946 0958 2026')).toBe('+44 20 7946 0958'.length);
+    expect(phoneLength('+1 415 555 0192 2026')).toBe('+1 415 555 0192'.length);
+    expect(phonePrefixLength('+44 20 7946 0958')).toBe(4);
+    expect(phonePrefixLength('(415) 867-5309')).toBe(6);
+  });
+
+  it('validates card issuer prefixes and standard groupings', () => {
+    expect(isCardNumber('4242 4242 4242 4242')).toBe(true);
+    expect(isCardNumber('3782 822463 10005')).toBe(true);
+    expect(isCardNumber('6011111111111117')).toBe(true);
+    expect(isCardNumber('3530111333300000')).toBe(true);
+    expect(isCardNumber('42 4242 4242 424242')).toBe(false);
+    expect(isCardNumber('1000000000000008')).toBe(false);
+  });
+
+  it('validates US SSN issued ranges', () => {
+    expect(isValidSsn('123-45-6789')).toBe(true);
+    expect(isValidSsn('219 09 9999')).toBe(true);
+    expect(isValidSsn('078051121')).toBe(true);
+    expect(isValidSsn('000-12-3456')).toBe(false);
+    expect(isValidSsn('666-12-3456')).toBe(false);
+    expect(isValidSsn('912-34-5678')).toBe(false);
+    expect(isValidSsn('123-00-4567')).toBe(false);
+    expect(isValidSsn('123-45-0000')).toBe(false);
+  });
+
+  it('validates IBAN mod-97 checksum and country-specific lengths', () => {
+    expect(ibanLength('GB82 WEST 1234 5698 7654 32 SORT CODE')).toBe(
+      'GB82 WEST 1234 5698 7654 32'.length,
+    );
+    expect(ibanLength('DE89370400440532013000')).toBe(22);
+    expect(ibanLength('FR14 2004 1010 0505 0001 3M02 606')).toBe(33);
+    expect(ibanLength('GB83 WEST 1234 5698 7654 32')).toBe(false);
+  });
+
+  it('validates compressed IPv6 edge forms and rejects MAC/time', () => {
+    expect(isValidIpv6('2001:db8::')).toBe(true);
+    expect(isValidIpv6('fe80::1ff:fe23:4567:890a')).toBe(true);
+    expect(isValidIpv6('12:30:45')).toBe(false);
+    expect(isValidIpv6('00:1A:2B:3C:4D:5E')).toBe(false);
+  });
+
+  it('validates DOB formats and computes birthYearSplit', () => {
+    expect(isValidDob('1985-03-14')).toBe(true);
+    expect(isValidDob('03/14/1985')).toBe(true);
+    expect(isValidDob('March 14, 1985')).toBe(true);
+    expect(isValidDob('14 March 1985')).toBe(true);
+    expect(isValidDob('Sept. 3, 1990')).toBe(true);
+    expect(isValidDob('2026-13-40')).toBe(false);
+    expect(birthYearSplit('1985-03-14')).toEqual({ head: 5, tail: 0 });
+    expect(birthYearSplit('14 March 1985')).toEqual({ head: 0, tail: 5 });
   });
 });

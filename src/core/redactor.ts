@@ -1,13 +1,20 @@
+import { buildMarker } from './codes';
 import { detectPii } from './detector';
 import {
   createPseudonymState,
+  type MappingEntry,
+  type MarkerStyle as CoreMarkerStyle,
   type PiiMatch,
   type PiiType,
   type PseudonymMapEntry,
   type PseudonymState,
+  type RedactionItem,
   type RedactionMode,
   type SanitizeResult,
+  type TextEdit,
 } from './types';
+
+export type DocumentMarkerStyle = CoreMarkerStyle | 'code' | 'label';
 
 const PSEUDONYM_PREFIX: Record<PiiType, string> = {
   EMAIL: 'USER',
@@ -169,4 +176,154 @@ export function sanitizeText(
   sharedState?: PseudonymState,
 ): SanitizeResult {
   return sanitizeTextWithReplacements(text, mode, sharedState).result;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Multi-format document redaction edits & reversible mapping generation       */
+/* -------------------------------------------------------------------------- */
+
+/** Replaces every letter or digit with `○`, keeping separators intact. */
+export const blankOut = (s: string): string => s.replace(/[\p{L}\p{N}]/gu, '○');
+
+export interface RedactionResult {
+  redactedText: string;
+  edits: TextEdit[];
+  mapping: MappingEntry[];
+}
+
+/** Splits an item's original text into kept prefix, hidden part, and kept suffix. */
+export function splitItem(it: RedactionItem): {
+  prefix: string;
+  hidden: string;
+  suffix: string;
+} {
+  const head = it.head ?? 0;
+  const tail = it.tail ?? 0;
+  const o = it.original;
+  return {
+    prefix: o.slice(0, head),
+    hidden: o.slice(head, o.length - tail),
+    suffix: o.slice(o.length - tail),
+  };
+}
+
+/** Computes the output text for a single `RedactionItem` under `style`. */
+export function outputFor(
+  it: RedactionItem,
+  style: DocumentMarkerStyle = 'code',
+): string {
+  if (style === 'full') {
+    return '[REDACTED]';
+  }
+  const { prefix, hidden, suffix } = splitItem(it);
+  let marker: string;
+  if (style === 'code' || style === 'pseudonym') {
+    marker = buildMarker(it.category, it.code);
+  } else if (style === 'label' || style === 'category') {
+    marker = `[${it.category}]`;
+  } else if (style === 'partial') {
+    marker = blankOut(hidden);
+  } else {
+    marker = blankOut(hidden);
+  }
+  return prefix + marker + suffix;
+}
+
+/** On-screen stand-in label showing `[CATEGORY]` without exposing random hex codes. */
+export function previewLabel(
+  it: RedactionItem,
+  style: DocumentMarkerStyle = 'code',
+): string {
+  return outputFor(
+    it,
+    style === 'code' || style === 'pseudonym' ? 'label' : style,
+  );
+}
+
+/** True when the item retains any leading or trailing characters outside its marker. */
+export function isPartial(it: RedactionItem): boolean {
+  return Boolean(it.head || it.tail);
+}
+
+/** Builds sorted non-overlapping `TextEdit[]` for active items. */
+export function buildEdits(
+  items: RedactionItem[],
+  style: DocumentMarkerStyle = 'code',
+): TextEdit[] {
+  return items
+    .filter((it) => it.active)
+    .sort((a, b) => a.start - b.start)
+    .map((it) => ({
+      start: it.start,
+      end: it.end,
+      replacement: outputFor(it, style),
+    }));
+}
+
+/** Applies sorted non-overlapping `TextEdit[]` to `text`. */
+export function applyEdits(text: string, edits: TextEdit[]): string {
+  const sorted = [...edits].sort((a, b) => a.start - b.start);
+  let out = '';
+  let cursor = 0;
+  for (const e of sorted) {
+    if (e.start < cursor) {
+      throw new Error('Overlapping edit ranges.');
+    }
+    out += text.slice(cursor, e.start) + e.replacement;
+    cursor = e.end;
+  }
+  return out + text.slice(cursor);
+}
+
+/** Applies redactions to `text` and builds the reversible `MappingEntry[]` table. */
+export function applyRedactions(
+  text: string,
+  items: RedactionItem[],
+  style: DocumentMarkerStyle = 'code',
+): RedactionResult {
+  const edits = buildEdits(items, style);
+  const mapping: MappingEntry[] = [];
+  const seen = new Set<string>();
+  const activeSorted =
+    style === 'code' || style === 'pseudonym'
+      ? [...items].filter((it) => it.active).sort((a, b) => a.start - b.start)
+      : [];
+
+  for (const it of activeSorted) {
+    if (seen.has(it.code)) {
+      continue;
+    }
+    seen.add(it.code);
+    const { prefix, hidden, suffix } = splitItem(it);
+    const entry: MappingEntry = {
+      code: it.code,
+      category: it.category,
+      original: hidden,
+    };
+    if (prefix) {
+      entry.prefix = prefix;
+    }
+    if (suffix) {
+      entry.suffix = suffix;
+    }
+    mapping.push(entry);
+  }
+
+  return { redactedText: applyEdits(text, edits), edits, mapping };
+}
+
+/** Merges multiple mapping tables, keeping the first occurrence of each `code`. */
+export function mergeMappings(...lists: MappingEntry[][]): MappingEntry[] {
+  const seen = new Set<string>();
+  const out: MappingEntry[] = [];
+  for (const list of lists) {
+    for (const e of list) {
+      if (seen.has(e.code)) {
+        continue;
+      }
+      seen.add(e.code);
+      out.push(e);
+    }
+  }
+  return out;
 }

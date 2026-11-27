@@ -1,5 +1,16 @@
+import {
+  analyzeDocument,
+  type DocumentSessionResult,
+} from './document-pipeline';
 import { runPipeline, type PipelineOutput } from './pipeline';
-import type { RedactionMode } from './types';
+import type {
+  LoadedDocument,
+  MappingEntry,
+  MarkerStyle,
+  Pattern,
+  PseudonymState,
+  RedactionMode,
+} from './types';
 
 /** Message payload sent to the sanitization Web Worker. */
 export interface WorkerRequest {
@@ -99,4 +110,20 @@ export function runPipelineAsync(
     const request: WorkerRequest = { id, input, kind, mode };
     worker.postMessage(request);
   });
+}
+
+/**
+ * Runs `analyzeDocument` asynchronously, avoiding `postMessage` serialization errors
+ * on binary format handles (`JSZip`/`PdfHandle`) and `Pattern.validate` functions.
+ */
+export function analyzeDocumentAsync(
+  doc: LoadedDocument,
+  patterns: Pattern[],
+  markerStyle: MarkerStyle,
+  sharedState?: PseudonymState,
+  existingMappings?: MappingEntry[],
+): Promise<DocumentSessionResult> {
+  return Promise.resolve().then(() =>
+    analyzeDocument(doc, patterns, markerStyle, sharedState, existingMappings),
+  );
 }

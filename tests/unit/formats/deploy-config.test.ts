@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { cwd } from 'node:process';
 import { describe, expect, it } from 'vitest';
@@ -24,27 +24,31 @@ describe('Cloud Run deployment and security configuration', () => {
     }
   });
 
-  it('configures nginx.conf with port 8080, /healthz, gzip, and zero-egress CSP headers', () => {
+  it('configures nginx.conf with port 8080, /healthz, gzip, and self-hosted zero-egress CSP headers', () => {
     const nginx = readRootFile('nginx.conf');
     expect(nginx).toContain('listen 8080;');
     expect(nginx).toContain('location = /healthz');
     expect(nginx).toContain('return 200');
     expect(nginx).toContain('gzip on;');
-    expect(nginx).toContain("connect-src 'none'");
+    expect(nginx).toContain("connect-src 'self'");
+    expect(nginx).toContain("worker-src 'self' blob:");
+    expect(nginx).toContain("'wasm-unsafe-eval'");
     expect(nginx).toContain('X-Content-Type-Options "nosniff"');
     expect(nginx).toContain('X-Frame-Options "DENY"');
     expect(nginx).toContain('Referrer-Policy "no-referrer"');
   });
 
-  it('includes cloudbuild.yaml, README.md, and PROMPT_LOG.md deliverables', () => {
+  it('includes cloudbuild.yaml, offline PDF font, README.md, and PROMPT_LOG.md deliverables', () => {
     const cloudbuild = readRootFile('cloudbuild.yaml');
     expect(cloudbuild).toContain('gcloud');
     expect(cloudbuild).toContain('run');
     expect(cloudbuild).toContain('--port=8080');
 
+    expect(existsSync(resolve(cwd(), 'public/fonts/NotoSansTC-Regular.ttf'))).toBe(true);
+
     const readme = readRootFile('README.md');
     expect(readme.length).toBeGreaterThan(200);
-    expect(readme).toContain("connect-src 'none'");
+    expect(readme).toContain("connect-src 'self'");
 
     const promptLog = readRootFile('PROMPT_LOG.md');
     expect(promptLog.length).toBeGreaterThan(200);

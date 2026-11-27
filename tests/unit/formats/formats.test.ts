@@ -2,12 +2,30 @@ import { describe, expect, it } from 'vitest';
 import {
   createEmptyStats,
   createPseudonymState,
+  MAX_FILE_BYTES,
+  type MappingEntry,
   type PseudonymMapEntry,
   type PseudonymState,
   type RedactionMode,
   type SanitizeFn,
 } from '../../../src/core/types';
-import { parseCsv, sanitizeCsv, serializeCsv } from '../../../src/formats/csv';
+import {
+  parseCsv,
+  parseMapping,
+  sanitizeCsv,
+  serializeCsv,
+  serializeMapping,
+} from '../../../src/formats/csv';
+import {
+  detectFormat,
+  formatLimitations,
+  generateDocument,
+  mappingFileName,
+  outputFileName,
+  parseDocument,
+  validateFile,
+} from '../../../src/formats/index';
+import { readBlobText } from '../../../src/formats/segments';
 import {
   buildDownloadFilename,
   sanitizeTxt,
@@ -52,6 +70,9 @@ describe('txt format helpers', () => {
       );
       expect(buildDownloadFilename(null, 'txt', 'partial')).toBe(
         'sanitized-output.sanitized-partial.txt',
+      );
+      expect(buildDownloadFilename('C:\\fakepath\\tickets.csv', 'csv', 'pseudonym')).toBe(
+        'tickets.sanitized-pseudonym.csv',
       );
     });
   });
@@ -99,12 +120,53 @@ describe('csv format helpers', () => {
     );
   });
 
-  it('handles empty CSV and trailing newlines without phantom rows', () => {
+  it('handles empty CSV, BOM prefix, empty cells, trailing commas, and trailing newlines', () => {
     expect(parseCsv('')).toEqual([]);
     expect(parseCsv('a,b\n1,2\n')).toEqual([
       ['a', 'b'],
       ['1', '2'],
     ]);
+    expect(parseCsv('\uFEFFa,,c\r\n1,2,\r\n')).toEqual([
+      ['a', '', 'c'],
+      ['1', '2', ''],
+    ]);
+  });
+
+  it('round-trips reversible mapping CSV with BOM, CRLF, special chars, and validation errors', () => {
+    const entries: MappingEntry[] = [
+      { code: 'USER_01', category: 'EMAIL', original: 'rahul@acme.com' },
+      {
+        code: 'CUSTOM_01',
+        category: 'CUSTOM',
+        original: '123, "Main" St\nFloor 2',
+        prefix: '123',
+        suffix: '2',
+      },
+    ];
+    const csv = serializeMapping(entries);
+    expect(csv.startsWith('\uFEFF')).toBe(true);
+    expect(csv).toContain('\r\n');
+    expect(csv).toContain('code,category,original,kept_prefix,kept_suffix');
+
+    const parsed = parseMapping(csv);
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.entries).toEqual(entries);
+
+    const missingHeader = parseMapping('code,original\nUSER_01,rahul@acme.com\n');
+    expect(missingHeader.entries).toEqual([]);
+    expect(missingHeader.errors.length).toBeGreaterThan(0);
+
+    const dupCode = parseMapping('code,category,original\nUSER_01,EMAIL,a@b.com\nUSER_01,EMAIL,c@d.com\n');
+    expect(dupCode.entries).toHaveLength(1);
+    expect(dupCode.errors.some((e) => e.includes('USER_01'))).toBe(true);
+
+    const emptyCode = parseMapping('code,category,original\n,EMAIL,a@b.com\n');
+    expect(emptyCode.entries).toEqual([]);
+    expect(emptyCode.errors.length).toBeGreaterThan(0);
+
+    const reordered = parseMapping('original,code,category,extra\nrahul@acme.com,USER_01,EMAIL,ignored\n');
+    expect(reordered.errors).toEqual([]);
+    expect(reordered.entries).toEqual([{ code: 'USER_01', category: 'EMAIL', original: 'rahul@acme.com' }]);
   });
 
   it('shares PseudonymState across CSV rows, aggregates stats, and preserves quoting', () => {
@@ -167,5 +229,41 @@ describe('csv format helpers', () => {
       ['Sharma, Rahul', 'USER_01', 'Contact USER_01, urgent'],
       ['Nair, Priya', 'USER_02', 'CC: USER_01'],
     ]);
+  });
+});
+
+describe('multi-format dispatcher & plaintext helpers', () => {
+  it('detects supported extensions and enforces 100 MB limit', () => {
+    expect(detectFormat('notes.md')).toBe('md');
+    expect(detectFormat('doc.markdown')).toBe('md');
+    expect(detectFormat('report.docx')).toBe('docx');
+    expect(detectFormat('sheet.xlsx')).toBe('xlsx');
+    expect(detectFormat('scan.pdf')).toBe('pdf');
+    expect(detectFormat('archive.zip')).toBeNull();
+
+    expect(validateFile({ name: 'ok.pdf', size: MAX_FILE_BYTES })).toBe('pdf');
+    expect(() => validateFile({ name: 'too-big.pdf', size: MAX_FILE_BYTES + 1 })).toThrow(/100 MB/);
+    expect(() => validateFile({ name: 'bad.exe', size: 100 })).toThrow(/Unsupported/);
+  });
+
+  it('parses and regenerates Markdown via unified dispatcher', async () => {
+    const file = new File(['# Note\nEmail: rahul@acme.example'], 'note.md', {
+      type: 'text/markdown',
+    });
+    const doc = await parseDocument(file);
+    expect(doc.format).toBe('md');
+    const start = doc.text.indexOf('rahul@acme.example');
+    const outBlob = await generateDocument(doc, [
+      { start, end: start + 'rahul@acme.example'.length, replacement: 'USER_01' },
+    ]);
+    expect(await readBlobText(outBlob)).toBe('# Note\nEmail: USER_01');
+  });
+
+  it('builds output/mapping filenames and format limitation notices', () => {
+    expect(outputFileName('C:\\fakepath\\audit.pdf', 'sanitized')).toBe('audit.sanitized.pdf');
+    expect(mappingFileName('C:\\fakepath\\audit.pdf')).toBe('audit.mapping.csv');
+    expect(formatLimitations('txt')).toBeNull();
+    expect(formatLimitations('pdf', false)).toMatch(/coordinates/i);
+    expect(formatLimitations('pdf', true)).toMatch(/OCR/i);
   });
 });

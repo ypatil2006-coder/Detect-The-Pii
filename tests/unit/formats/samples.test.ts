@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { getSampleById, SAMPLE_PRESETS } from '../../../src/formats/samples';
+import { parseDocx } from '../../../src/formats/docx';
+import {
+  buildSampleDocxFile,
+  buildSamplePdfFile,
+  buildSampleXlsxFile,
+  getSampleById,
+  MARKDOWN_SAMPLE_TEXT,
+  SAMPLE_PRESETS,
+} from '../../../src/formats/samples';
+import { parseXlsx } from '../../../src/formats/xlsx';
 
 const VERHOEFF_D = [
   [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
@@ -84,5 +93,20 @@ describe('sample noisy text presets', () => {
     const emails = combined.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi) ?? [];
     const uniqueEmails = new Set(emails.map((e) => e.toLowerCase()));
     expect(emails.length).toBeGreaterThan(uniqueEmails.size);
+  });
+
+  it('builds synthetic Markdown, DOCX, XLSX, and PDF sample fixtures offline', async () => {
+    expect(MARKDOWN_SAMPLE_TEXT).toContain('rahul.sharma@acme.example');
+    expect(MARKDOWN_SAMPLE_TEXT).toContain('ABCPA1234F');
+
+    const docx = await parseDocx(await buildSampleDocxFile());
+    expect(docx.text).toContain('ABCPA1234F');
+
+    const xlsx = await parseXlsx(await buildSampleXlsxFile());
+    expect(xlsx.text).toContain('rahul.sharma@acme.example');
+
+    const pdfFile = await buildSamplePdfFile();
+    expect(pdfFile.name).toBe('sample-ticket.pdf');
+    expect(pdfFile.size).toBeGreaterThan(500);
   });
 });

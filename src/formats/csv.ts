@@ -2,6 +2,7 @@ import {
   createEmptyStats,
   createPseudonymState,
   type DetectionStats,
+  type MappingEntry,
   type PiiType,
   type PseudonymMapEntry,
   type RedactionMode,
@@ -107,6 +108,91 @@ function formatCsvCell(value: string): string {
  */
 export function serializeCsv(rows: string[][]): string {
   return rows.map((row) => row.map(formatCsvCell).join(',')).join('\n');
+}
+
+const BOM = '\uFEFF';
+const REQUIRED_MAPPING_HEADERS = ['code', 'category', 'original'] as const;
+const KEPT_MAPPING_HEADERS = ['kept_prefix', 'kept_suffix'] as const;
+
+export const parseCsvRows = parseCsv;
+
+export interface ParseMappingResult {
+  entries: MappingEntry[];
+  errors: string[];
+}
+
+/**
+ * Serializes reversible redaction mapping entries into a UTF-8 BOM + CRLF CSV.
+ * `kept_prefix` and `kept_suffix` columns are included only when at least one entry retains context.
+ */
+export function serializeMapping(entries: MappingEntry[]): string {
+  const hasKept = entries.some((e) => Boolean(e.prefix || e.suffix));
+  const headers = [...REQUIRED_MAPPING_HEADERS, ...(hasKept ? KEPT_MAPPING_HEADERS : [])];
+  const lines = [headers.join(',')];
+  for (const entry of entries) {
+    const fields = [entry.code, entry.category, entry.original];
+    if (hasKept) {
+      fields.push(entry.prefix ?? '', entry.suffix ?? '');
+    }
+    lines.push(fields.map(formatCsvCell).join(','));
+  }
+  return BOM + lines.join('\r\n') + '\r\n';
+}
+
+/**
+ * Parses a `.mapping.csv` table by header name and validates required columns,
+ * non-empty codes, and duplicate codes.
+ */
+export function parseMapping(text: string): ParseMappingResult {
+  const errors: string[] = [];
+  const rows = parseCsv(text).filter((r) => !(r.length === 1 && r[0] === ''));
+  if (rows.length === 0) {
+    return { entries: [], errors: ['Mapping CSV is empty.'] };
+  }
+
+  const header = rows[0].map((h) => h.trim());
+  const idx: Record<string, number> = {};
+  header.forEach((h, i) => {
+    idx[h] = i;
+  });
+
+  for (const required of REQUIRED_MAPPING_HEADERS) {
+    if (!(required in idx)) {
+      errors.push(`Missing required column: ${required}`);
+    }
+  }
+  if (errors.length > 0) {
+    return { entries: [], errors };
+  }
+
+  const entries: MappingEntry[] = [];
+  const seen = new Set<string>();
+
+  rows.slice(1).forEach((row, rowIndex) => {
+    const lineNo = rowIndex + 2;
+    const code = (row[idx.code] ?? '').trim();
+    const category = row[idx.category] ?? '';
+    const original = row[idx.original] ?? '';
+
+    if (!code) {
+      errors.push(`Row ${lineNo}: code is empty.`);
+      return;
+    }
+    if (seen.has(code)) {
+      errors.push(`Row ${lineNo}: duplicate code "${code}".`);
+      return;
+    }
+    seen.add(code);
+
+    const entry: MappingEntry = { code, category, original };
+    const prefix = 'kept_prefix' in idx ? (row[idx.kept_prefix] ?? '') : '';
+    const suffix = 'kept_suffix' in idx ? (row[idx.kept_suffix] ?? '') : '';
+    if (prefix) entry.prefix = prefix;
+    if (suffix) entry.suffix = suffix;
+    entries.push(entry);
+  });
+
+  return { entries, errors };
 }
 
 /**

@@ -78,4 +78,33 @@ describe('runPipeline integration', () => {
     expect(largeOut.stats.total).toBe(0);
     expect(largeOut.durationMs).toBeLessThan(50);
   });
+
+  it('aligns row 1 header diffRows cleanly on UTF-8 BOM-prefixed CSV without false changes', () => {
+    const bomCsv = '\uFEFFname,email\nAlice,alice@acme.example';
+    const out = runPipeline(bomCsv, 'csv', 'pseudonym');
+
+    expect(out.diffRows).toHaveLength(2);
+    expect(out.diffRows[0].hasChanges).toBe(false);
+    expect(out.diffRows[0].originalSegments.map((s) => s.text).join('')).toBe('name,email');
+    expect(out.diffRows[0].sanitizedSegments.map((s) => s.text).join('')).toBe('name,email');
+    expect(out.diffRows[1].hasChanges).toBe(true);
+    expect(out.diffRows[1].sanitizedSegments.map((s) => s.text).join('')).toBe('Alice,USER_01');
+  });
+
+  it('populates all 7 PipelineStageTiming entries on runPipeline', () => {
+    const out = runPipeline(getSampleById('support-log').content, 'txt', 'pseudonym');
+    expect(out.stages.map((s) => s.id)).toEqual([
+      'parse',
+      'scan',
+      'luhn',
+      'verhoeff',
+      'validators',
+      'redact',
+      'diff',
+    ]);
+    const luhnStage = out.stages.find((s) => s.id === 'luhn')!;
+    expect(luhnStage.matchedCount).toBe(1);
+    expect(luhnStage.rejectedCount).toBe(1);
+    expect(out.stages.every((s) => s.durationMs >= 0)).toBe(true);
+  });
 });
