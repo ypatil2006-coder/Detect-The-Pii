@@ -1,8 +1,9 @@
 # Detect the PII — Client-Side Browser PII Sanitizer
 
+[![CI](https://github.com/ypatil2006-coder/Detect-The-Pii/actions/workflows/ci.yml/badge.svg)](https://github.com/ypatil2006-coder/Detect-The-Pii/actions/workflows/ci.yml)
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-detect--the--pii.vercel.app-brightgreen?logo=vercel)](https://detect-the-pii.vercel.app)
 [![LinkedIn Demo Post](https://img.shields.io/badge/LinkedIn-Demo%20Post-0A66C2?logo=linkedin)](https://lnkd.in/p/gSGKUmN5)
-[![Tests](https://img.shields.io/badge/Tests-167%20passing%20%2F%2029%20files-success?logo=vitest)](./tests)
+[![Tests](https://img.shields.io/badge/Tests-184%20passing%20%2F%2030%20files-success?logo=vitest)](./tests)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript)](./tsconfig.json)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](./package.json)
 
