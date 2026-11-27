@@ -111,7 +111,7 @@ export function LandingComposer({
     <section className="landing-stage" aria-labelledby="landing-heading">
       <div className="landing-header" data-enter="1">
         <h1 id="landing-heading" className="landing-title">
-          PII Guard
+          Detect the PII
         </h1>
       </div>
 

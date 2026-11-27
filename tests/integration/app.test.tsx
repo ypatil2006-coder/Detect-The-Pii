@@ -53,7 +53,7 @@ describe('PII Sanitizer Workbench UI Integration', () => {
     expect(screen.getByRole('main')).toBeInTheDocument();
     expect(screen.queryByRole('complementary', { name: /audit dashboard/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/awaiting input/i)).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1, name: /pii guard/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: /detect the pii/i })).toBeInTheDocument();
     expect(screen.queryByText(/your data never leaves your browser\./i)).not.toBeInTheDocument();
     expect(screen.queryByText(/zero external data egress/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/100% browser-local/i)).not.toBeInTheDocument();

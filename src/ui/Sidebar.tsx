@@ -45,7 +45,7 @@ export function Sidebar({
               <path d="m9 12 2 2 4-4" />
             </svg>
           </span>
-          <span>PII Guard</span>
+          <span>Detect the PII</span>
           <span className="brand-badge">Local</span>
         </div>
         <button
