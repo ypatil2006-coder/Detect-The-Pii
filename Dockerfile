@@ -1,4 +1,4 @@
-# Stage 1: Build static Vite + React bundle
+# Stage 1: Build static Vite + React bundle (including public/fonts and dist/ocr assets)
 FROM node:22-alpine AS builder
 WORKDIR /app
 
