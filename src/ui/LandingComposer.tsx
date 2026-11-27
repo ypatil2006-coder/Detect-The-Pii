@@ -1,7 +1,6 @@
-import { useRef, useState, type DragEvent, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type DragEvent, type FormEvent } from 'react';
 import type { MarkerStyle } from '../core/types';
 import { ACCEPT_ATTR } from '../formats/index';
-import { SAMPLE_PRESETS } from '../formats/samples';
 
 export type SampleTriggerId =
   | 'support-log'
@@ -23,6 +22,31 @@ export interface LandingComposerProps {
   isProcessing: boolean;
 }
 
+const PRIMARY_SAMPLES: ReadonlyArray<{ id: SampleTriggerId; label: string; title: string }> = [
+  {
+    id: 'support-log',
+    label: 'Support Log (.txt)',
+    title: 'Multi-line support log with emails, +91/US phones, PAN, Aadhaar, Luhn & non-Luhn cards',
+  },
+  {
+    id: 'customers-csv',
+    label: 'Customer Audit (.csv)',
+    title: 'RFC-4180 CSV with quoted commas, recurring entities, Aadhaar, PAN, and cards',
+  },
+  {
+    id: 'clinical-resume',
+    label: 'Clinical Note (.txt)',
+    title: 'Onboarding & intake memo with synthetic Aadhaar, PAN, and billing card',
+  },
+];
+
+const EXTRA_FORMAT_SAMPLES: ReadonlyArray<{ id: SampleTriggerId; label: string }> = [
+  { id: 'markdown', label: 'Incident Brief (.md)' },
+  { id: 'docx', label: 'Sample Word (.docx)' },
+  { id: 'xlsx', label: 'Sample Excel (.xlsx)' },
+  { id: 'pdf', label: 'Sample PDF (.pdf)' },
+];
+
 export function LandingComposer({
   draftText,
   onDraftChange,
@@ -34,7 +58,29 @@ export function LandingComposer({
   isProcessing,
 }: LandingComposerProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const moreMenuRef = useRef<HTMLDivElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+
+  useEffect(() => {
+    if (!moreOpen) return;
+    const handlePointerDown = (event: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target as Node)) {
+        setMoreOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMoreOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handlePointerDown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [moreOpen]);
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -68,7 +114,7 @@ export function LandingComposer({
           Client-Side PII Sanitizer
         </h1>
         <p className="landing-subtitle">
-          Paste logs or drop .txt, .md, .csv, .docx, .xlsx, or .pdf files. Detection, OCR, and redaction execute locally in your browser.
+          Paste logs or drop .txt, .md, .csv, .docx, .xlsx, or .pdf files — processed locally in your browser.
         </p>
       </div>
 
@@ -130,7 +176,7 @@ export function LandingComposer({
               disabled={isProcessing}
               aria-label="Redaction mode"
             >
-              <option value="pseudonym">Consistent Pseudonym (USER_01 / Reversible)</option>
+              <option value="pseudonym">Consistent Pseudonym (USER_01)</option>
               <option value="partial">Partial Mask (Verify Last 4)</option>
               <option value="full">Full Mask ([REDACTED])</option>
               <option value="category">Category Tag ([EMAIL])</option>
@@ -148,68 +194,62 @@ export function LandingComposer({
         </div>
       </form>
 
-      <div className="landing-meta-list">
-        <div className="landing-meta-row">
-          <span className="landing-meta-label">Quick Samples</span>
-          <div className="sample-chips">
-            {SAMPLE_PRESETS.map((preset) => (
-              <button
-                key={preset.id}
-                type="button"
-                className="sample-chip"
-                onClick={() => onLoadSample(preset.id as SampleTriggerId)}
-                disabled={isProcessing}
-                title={preset.description}
-              >
-                {preset.label}
-              </button>
-            ))}
+      <div className="landing-sample-bar" aria-label="Quick sample datasets">
+        <div className="landing-sample-row">
+          {PRIMARY_SAMPLES.map((sample) => (
             <button
+              key={sample.id}
               type="button"
               className="sample-chip"
-              onClick={() => onLoadSample('markdown')}
+              onClick={() => onLoadSample(sample.id)}
               disabled={isProcessing}
+              title={sample.title}
             >
-              Incident Brief (.md)
+              {sample.label}
             </button>
+          ))}
+
+          <div className="more-formats-wrap" ref={moreMenuRef}>
             <button
               type="button"
-              className="sample-chip"
-              onClick={() => onLoadSample('docx')}
+              className={`sample-chip sample-chip--more${moreOpen ? ' is-open' : ''}`}
+              aria-expanded={moreOpen}
+              aria-haspopup="menu"
+              onClick={() => setMoreOpen((prev) => !prev)}
               disabled={isProcessing}
             >
-              Sample Word (.docx)
+              <span>More formats</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path d="m6 9 6 6 6-6" />
+              </svg>
             </button>
-            <button
-              type="button"
-              className="sample-chip"
-              onClick={() => onLoadSample('xlsx')}
-              disabled={isProcessing}
-            >
-              Sample Excel (.xlsx)
-            </button>
-            <button
-              type="button"
-              className="sample-chip"
-              onClick={() => onLoadSample('pdf')}
-              disabled={isProcessing}
-            >
-              Sample PDF (.pdf)
-            </button>
+
+            {moreOpen && (
+              <div className="more-formats-menu" role="menu" aria-label="Additional sample document formats">
+                {EXTRA_FORMAT_SAMPLES.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    role="menuitem"
+                    className="more-formats-item"
+                    onClick={() => {
+                      setMoreOpen(false);
+                      onLoadSample(item.id);
+                    }}
+                    disabled={isProcessing}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="landing-meta-row">
-          <span className="landing-meta-label">Local Engines</span>
-          <div className="capability-list">
-            <span>PAN &amp; Verhoeff Aadhaar</span>
-            <span>Luhn Credit Cards</span>
-            <span>libphonenumber-js</span>
-            <span>IBAN mod-97 &amp; SSN</span>
-            <span>Self-Hosted English OCR</span>
-            <span>Up to 10 files · 100 MB max</span>
-          </div>
-        </div>
+        <p className="privacy-pill">
+          <span className="status-dot" aria-hidden="true" />
+          <span>100% browser-local · Email, Phone, IP, PAN, Aadhaar &amp; Luhn Cards · Zero server egress</span>
+        </p>
       </div>
     </section>
   );

@@ -408,9 +408,10 @@ export function App() {
   const activeTotalMs = activeSession?.durationMs ?? 0;
 
   const isLandingView = activeSection === 'workbench' && !activeSession;
+  const showAuditPanel = Boolean(activeSession) && auditOpen;
 
   return (
-    <div className={`app-shell${auditOpen ? ' with-audit' : ''}`}>
+    <div className={`app-shell${showAuditPanel ? ' with-audit' : ''}`}>
       <a href="#main-content" className="skip-link">
         Skip to main content
       </a>
@@ -437,7 +438,7 @@ export function App() {
       />
 
       <main id="main-content" className="main-column">
-        <header className="topbar">
+        <header className={`topbar${isLandingView ? ' topbar--minimal' : ''}`}>
           <div className="topbar-left">
             <button
               type="button"
@@ -456,9 +457,7 @@ export function App() {
               </svg>
             </button>
 
-            {isLandingView ? (
-              <h2 className="topbar-title">New Sanitization Session</h2>
-            ) : (
+            {!isLandingView && (
               <h1 className="topbar-title">
                 {activeSection === 'rules'
                   ? 'Rules & Custom Patterns'
@@ -535,22 +534,24 @@ export function App() {
               </>
             )}
 
-            <button
-              type="button"
-              className="btn"
-              aria-expanded={auditOpen}
-              onClick={() => {
-                setAuditOpen((open) => {
-                  const next = !open;
-                  if (next && typeof window !== 'undefined' && window.innerWidth <= 960) {
-                    setSidebarOpen(false);
-                  }
-                  return next;
-                });
-              }}
-            >
-              {auditOpen ? 'Hide Audit' : 'Show Audit'}
-            </button>
+            {activeSession && (
+              <button
+                type="button"
+                className="btn"
+                aria-expanded={auditOpen}
+                onClick={() => {
+                  setAuditOpen((open) => {
+                    const next = !open;
+                    if (next && typeof window !== 'undefined' && window.innerWidth <= 960) {
+                      setSidebarOpen(false);
+                    }
+                    return next;
+                  });
+                }}
+              >
+                {auditOpen ? 'Hide Audit' : 'Show Audit'}
+              </button>
+            )}
           </div>
         </header>
 
@@ -663,7 +664,7 @@ export function App() {
         </div>
       </main>
 
-      {auditOpen && (
+      {showAuditPanel && (
         <AuditPanel
           session={activeSession}
           markerStyle={markerStyle}

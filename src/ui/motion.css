@@ -259,7 +259,14 @@
   border-radius: 12px;
   border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
   background: var(--bg-elevated, #232327);
-  transition: border-color 180ms var(--ease-out), opacity 180ms var(--ease-out), transform 180ms var(--ease-arrive);
+  transition: border-color 150ms ease, background-color 150ms ease, opacity 180ms var(--ease-out), transform 180ms var(--ease-arrive);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .pipeline-node:hover {
+    border-color: var(--border-strong, rgba(255, 255, 255, 0.16));
+    background: #27272c;
+  }
 }
 
 .pipeline-node.is-active {
@@ -537,7 +544,14 @@
   border-radius: 8px;
   background: var(--bg-elevated, #232327);
   border: 1px solid transparent;
-  transition: opacity 160ms var(--ease-out), border-color 160ms ease;
+  transition: opacity 160ms var(--ease-out), border-color 150ms ease, background-color 150ms ease, transform 150ms var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .progress-item:hover {
+    border-color: var(--border-subtle, rgba(255, 255, 255, 0.08));
+    background: #27272c;
+  }
 }
 
 .progress-item.is-active {
@@ -657,11 +671,20 @@
   font-size: 0.75rem;
   font-weight: 500;
   cursor: pointer;
-  transition: transform 140ms var(--ease-out), background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+  transition: transform 150ms var(--ease-out), background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .diff-mode-pill:hover {
+    transform: translateY(-1px);
+    border-color: var(--border-strong, rgba(255, 255, 255, 0.16));
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary, #f4f4f6);
+  }
 }
 
 .diff-mode-pill:active {
-  transform: scale(0.97);
+  transform: scale(0.98);
 }
 
 .diff-mode-pill[aria-checked='true'] {
@@ -745,6 +768,15 @@
   padding: 4px 10px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.03);
   transition: background-color 140ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .diff-row:hover {
+    background: rgba(255, 255, 255, 0.04);
+  }
+  .diff-row.has-changes:hover {
+    background: rgba(59, 130, 246, 0.09);
+  }
 }
 
 .diff-row.has-changes {
@@ -882,6 +914,19 @@
   font-size: 0.6875rem;
   font-weight: 600;
   cursor: pointer;
+  transition: transform 150ms var(--ease-out), border-color 150ms ease, background-color 150ms ease, opacity 150ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .cat-toggle-chip:hover {
+    transform: translateY(-1px);
+    border-color: var(--border-strong, rgba(255, 255, 255, 0.16));
+    background: rgba(255, 255, 255, 0.06);
+  }
+}
+
+.cat-toggle-chip:active {
+  transform: scale(0.97);
 }
 
 .cat-toggle-chip.is-muted {
@@ -909,6 +954,14 @@
   background: var(--bg-elevated, #232327);
   border: 1px solid transparent;
   min-width: 0;
+  transition: transform 150ms var(--ease-out), border-color 150ms ease, background-color 150ms ease, opacity 150ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .suggestion-item:hover {
+    border-color: var(--border-strong, rgba(255, 255, 255, 0.16));
+    background: #28282d;
+  }
 }
 
 .suggestion-item.is-selected {
@@ -1002,6 +1055,18 @@
   font-size: 0.8125rem;
   font-weight: 500;
   cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease, transform 150ms var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .rules-tab:hover {
+    color: var(--text-primary, #f4f4f6);
+    background: rgba(255, 255, 255, 0.05);
+  }
+}
+
+.rules-tab:active {
+  transform: scale(0.98);
 }
 
 .rules-tab[aria-selected='true'] {
@@ -1139,13 +1204,21 @@
   .pipeline-connector-path,
   .progress-item,
   .diff-mode-pill,
+  .cat-toggle-chip,
+  .suggestion-item,
+  .rules-tab,
   .diff-row {
     transition: opacity 120ms ease, border-color 120ms ease, background-color 120ms ease;
     animation: none !important;
   }
 
+  .ui-btn:hover,
   .ui-btn:active:not(:disabled),
-  .diff-mode-pill:active {
+  .diff-mode-pill:hover,
+  .diff-mode-pill:active,
+  .cat-toggle-chip:hover,
+  .cat-toggle-chip:active,
+  .rules-tab:active {
     transform: none;
   }
 }

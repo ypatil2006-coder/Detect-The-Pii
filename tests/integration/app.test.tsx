@@ -51,11 +51,18 @@ describe('PII Sanitizer Workbench UI Integration', () => {
 
     expect(screen.getByRole('navigation', { name: /workspace navigation/i })).toBeInTheDocument();
     expect(screen.getByRole('main')).toBeInTheDocument();
-    expect(screen.getByRole('complementary', { name: /audit dashboard/i })).toBeInTheDocument();
+    expect(screen.queryByRole('complementary', { name: /audit dashboard/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/awaiting input/i)).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1, name: /client-side pii sanitizer/i })).toBeInTheDocument();
     expect(screen.getByRole('status')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /support & incident log/i }));
+    const moreFormatsBtn = screen.getByRole('button', { name: /more formats/i });
+    fireEvent.click(moreFormatsBtn);
+    expect(screen.getByRole('menuitem', { name: /sample pdf/i })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: /sample word/i })).toBeInTheDocument();
+    fireEvent.click(moreFormatsBtn);
+
+    fireEvent.click(screen.getByRole('button', { name: /support log/i }));
 
     const checklist = await screen.findByRole('region', { name: /sanitization progress checklist/i });
     expect(within(checklist).getByText(/7 steps · Completed/i)).toBeInTheDocument();
@@ -269,7 +276,7 @@ describe('PII Sanitizer Workbench UI Integration', () => {
 
     // 3. Sanitize session download (sanitized + mapping CSV)
     fireEvent.click(screen.getByRole('button', { name: /sanitize workbench/i }));
-    fireEvent.click(screen.getByRole('button', { name: /support & incident log/i }));
+    fireEvent.click(screen.getByRole('button', { name: /support log/i }));
 
     const downloadSanitizedBtn = await screen.findByRole('button', { name: /download sanitized/i });
     const downloadMappingBtn = screen.getByRole('button', { name: /mapping csv/i });
