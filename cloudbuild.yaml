@@ -1,0 +1,43 @@
+substitutions:
+  _REGION: us-central1
+  _REPO: pii-sanitizer
+  _SERVICE: pii-sanitizer
+
+steps:
+  - name: "gcr.io/cloud-builders/docker"
+    id: build-image
+    args:
+      - build
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:${BUILD_ID}"
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:latest"
+      - "."
+
+  - name: "gcr.io/cloud-builders/docker"
+    id: push-image
+    args:
+      - push
+      - "--all-tags"
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}"
+
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: deploy-cloud-run
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - "${_SERVICE}"
+      - "--image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:${BUILD_ID}"
+      - "--region=${_REGION}"
+      - "--platform=managed"
+      - "--port=8080"
+      - "--allow-unauthenticated"
+      - "--cpu=1"
+      - "--memory=256Mi"
+      - "--min-instances=0"
+      - "--max-instances=5"
+
+images:
+  - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:${BUILD_ID}"
+  - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:latest"
