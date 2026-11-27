@@ -1,3 +1,11 @@
+/**
+ * @module Sidebar
+ * @description Navigation sidebar with brand lockup, section links, session file list,
+ * and the persistent "Zero external data egress" privacy status indicator.
+ *
+ * The status pill reflects the enforced Content Security Policy (`connect-src 'self'`)
+ * and is always visible to remind users their data never leaves the browser.
+ */
 import type { DocumentSessionResult } from '../core/document-pipeline';
 
 export type NavSection = 'workbench' | 'pipeline' | 'rules' | 'restore';

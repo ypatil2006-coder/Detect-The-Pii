@@ -1,3 +1,13 @@
+/**
+ * @module DiffSuggestionsView
+ * @description Side-by-side Original vs. Sanitized diff viewer with interactive suggestion panel.
+ *
+ * Renders colour-coded inline PII highlights on the original side and redaction markers
+ * on the sanitized side. Users can toggle individual redactions, mute whole categories,
+ * and add manual redaction phrases — all without any server round-trip.
+ *
+ * Renders exclusively via React JSX text nodes (zero dangerouslySetInnerHTML).
+ */
 import { useMemo, useState, type CSSProperties, type FormEvent } from 'react';
 import type { DocumentSessionResult } from '../core/document-pipeline';
 import { previewLabel } from '../core/redactor';

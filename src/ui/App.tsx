@@ -1,3 +1,16 @@
+/**
+ * @module App
+ * @description Root application component for Detect the PII.
+ *
+ * Owns all top-level state: active document session, redaction mode, marker style,
+ * theme preference, navigation section, batch file queue, and audit overlay visibility.
+ *
+ * Data flow:
+ *   LandingComposer (input) → document-pipeline (detect + redact) → DiffSuggestionsView + AuditPanel (output)
+ *
+ * Privacy guarantee: no data leaves this component tree; all processing is synchronous
+ * or offloaded to same-origin Web Workers via {@link runPipelineAsync}.
+ */
 import {
   useCallback,
   useEffect,
@@ -8,18 +21,109 @@ import {
   type FormEvent,
   type MouseEvent,
 } from 'react';
+/**
+ * @module App
+ * @description Root application component for Detect the PII.
+ *
+ * Owns all top-level state: active document session, redaction mode, marker style,
+ * theme preference, navigation section, batch file queue, and audit overlay visibility.
+ *
+ * Data flow:
+ *   LandingComposer (input) → document-pipeline (detect + redact) → DiffSuggestionsView + AuditPanel (output)
+ *
+ * Privacy guarantee: no data leaves this component tree; all processing is synchronous
+ * or offloaded to same-origin Web Workers via {@link runPipelineAsync}.
+ */
 import { flushSync } from 'react-dom';
+/**
+ * @module App
+ * @description Root application component for Detect the PII.
+ *
+ * Owns all top-level state: active document session, redaction mode, marker style,
+ * theme preference, navigation section, batch file queue, and audit overlay visibility.
+ *
+ * Data flow:
+ *   LandingComposer (input) → document-pipeline (detect + redact) → DiffSuggestionsView + AuditPanel (output)
+ *
+ * Privacy guarantee: no data leaves this component tree; all processing is synchronous
+ * or offloaded to same-origin Web Workers via {@link runPipelineAsync}.
+ */
 import { CodeBook } from '../core/codes';
+/**
+ * @module App
+ * @description Root application component for Detect the PII.
+ *
+ * Owns all top-level state: active document session, redaction mode, marker style,
+ * theme preference, navigation section, batch file queue, and audit overlay visibility.
+ *
+ * Data flow:
+ *   LandingComposer (input) → document-pipeline (detect + redact) → DiffSuggestionsView + AuditPanel (output)
+ *
+ * Privacy guarantee: no data leaves this component tree; all processing is synchronous
+ * or offloaded to same-origin Web Workers via {@link runPipelineAsync}.
+ */
 import { addManualItem, toggleItem } from '../core/detector';
+/**
+ * @module App
+ * @description Root application component for Detect the PII.
+ *
+ * Owns all top-level state: active document session, redaction mode, marker style,
+ * theme preference, navigation section, batch file queue, and audit overlay visibility.
+ *
+ * Data flow:
+ *   LandingComposer (input) → document-pipeline (detect + redact) → DiffSuggestionsView + AuditPanel (output)
+ *
+ * Privacy guarantee: no data leaves this component tree; all processing is synchronous
+ * or offloaded to same-origin Web Workers via {@link runPipelineAsync}.
+ */
 import {
   analyzeDocument,
   buildExportBlob,
   recomputeDocumentSession,
   type DocumentSessionResult,
 } from '../core/document-pipeline';
+/**
+ * @module App
+ * @description Root application component for Detect the PII.
+ *
+ * Owns all top-level state: active document session, redaction mode, marker style,
+ * theme preference, navigation section, batch file queue, and audit overlay visibility.
+ *
+ * Data flow:
+ *   LandingComposer (input) → document-pipeline (detect + redact) → DiffSuggestionsView + AuditPanel (output)
+ *
+ * Privacy guarantee: no data leaves this component tree; all processing is synchronous
+ * or offloaded to same-origin Web Workers via {@link runPipelineAsync}.
+ */
 import { getEffectivePatterns, loadConfig } from '../core/pattern-store';
 import type { PipelineStageTiming } from '../core/pipeline';
+/**
+ * @module App
+ * @description Root application component for Detect the PII.
+ *
+ * Owns all top-level state: active document session, redaction mode, marker style,
+ * theme preference, navigation section, batch file queue, and audit overlay visibility.
+ *
+ * Data flow:
+ *   LandingComposer (input) → document-pipeline (detect + redact) → DiffSuggestionsView + AuditPanel (output)
+ *
+ * Privacy guarantee: no data leaves this component tree; all processing is synchronous
+ * or offloaded to same-origin Web Workers via {@link runPipelineAsync}.
+ */
 import { applyRedactions } from '../core/redactor';
+/**
+ * @module App
+ * @description Root application component for Detect the PII.
+ *
+ * Owns all top-level state: active document session, redaction mode, marker style,
+ * theme preference, navigation section, batch file queue, and audit overlay visibility.
+ *
+ * Data flow:
+ *   LandingComposer (input) → document-pipeline (detect + redact) → DiffSuggestionsView + AuditPanel (output)
+ *
+ * Privacy guarantee: no data leaves this component tree; all processing is synchronous
+ * or offloaded to same-origin Web Workers via {@link runPipelineAsync}.
+ */
 import {
   createPseudonymState,
   type ExtendedCategory,
@@ -28,8 +132,47 @@ import {
   type Pattern,
   type RedactionItem,
 } from '../core/types';
+/**
+ * @module App
+ * @description Root application component for Detect the PII.
+ *
+ * Owns all top-level state: active document session, redaction mode, marker style,
+ * theme preference, navigation section, batch file queue, and audit overlay visibility.
+ *
+ * Data flow:
+ *   LandingComposer (input) → document-pipeline (detect + redact) → DiffSuggestionsView + AuditPanel (output)
+ *
+ * Privacy guarantee: no data leaves this component tree; all processing is synchronous
+ * or offloaded to same-origin Web Workers via {@link runPipelineAsync}.
+ */
 import { buildArchive, validateBatchFiles } from '../formats/batch';
+/**
+ * @module App
+ * @description Root application component for Detect the PII.
+ *
+ * Owns all top-level state: active document session, redaction mode, marker style,
+ * theme preference, navigation section, batch file queue, and audit overlay visibility.
+ *
+ * Data flow:
+ *   LandingComposer (input) → document-pipeline (detect + redact) → DiffSuggestionsView + AuditPanel (output)
+ *
+ * Privacy guarantee: no data leaves this component tree; all processing is synchronous
+ * or offloaded to same-origin Web Workers via {@link runPipelineAsync}.
+ */
 import { ACCEPT_ATTR, loadDocument } from '../formats/index';
+/**
+ * @module App
+ * @description Root application component for Detect the PII.
+ *
+ * Owns all top-level state: active document session, redaction mode, marker style,
+ * theme preference, navigation section, batch file queue, and audit overlay visibility.
+ *
+ * Data flow:
+ *   LandingComposer (input) → document-pipeline (detect + redact) → DiffSuggestionsView + AuditPanel (output)
+ *
+ * Privacy guarantee: no data leaves this component tree; all processing is synchronous
+ * or offloaded to same-origin Web Workers via {@link runPipelineAsync}.
+ */
 import {
   buildSampleDocxFile,
   buildSamplePdfFile,
@@ -37,13 +180,117 @@ import {
   getSampleById,
   MARKDOWN_SAMPLE_TEXT,
 } from '../formats/samples';
+/**
+ * @module App
+ * @description Root application component for Detect the PII.
+ *
+ * Owns all top-level state: active document session, redaction mode, marker style,
+ * theme preference, navigation section, batch file queue, and audit overlay visibility.
+ *
+ * Data flow:
+ *   LandingComposer (input) → document-pipeline (detect + redact) → DiffSuggestionsView + AuditPanel (output)
+ *
+ * Privacy guarantee: no data leaves this component tree; all processing is synchronous
+ * or offloaded to same-origin Web Workers via {@link runPipelineAsync}.
+ */
 import { AuditPanel } from './AuditPanel';
+/**
+ * @module App
+ * @description Root application component for Detect the PII.
+ *
+ * Owns all top-level state: active document session, redaction mode, marker style,
+ * theme preference, navigation section, batch file queue, and audit overlay visibility.
+ *
+ * Data flow:
+ *   LandingComposer (input) → document-pipeline (detect + redact) → DiffSuggestionsView + AuditPanel (output)
+ *
+ * Privacy guarantee: no data leaves this component tree; all processing is synchronous
+ * or offloaded to same-origin Web Workers via {@link runPipelineAsync}.
+ */
 import { DiffSuggestionsView } from './DiffSuggestionsView';
+/**
+ * @module App
+ * @description Root application component for Detect the PII.
+ *
+ * Owns all top-level state: active document session, redaction mode, marker style,
+ * theme preference, navigation section, batch file queue, and audit overlay visibility.
+ *
+ * Data flow:
+ *   LandingComposer (input) → document-pipeline (detect + redact) → DiffSuggestionsView + AuditPanel (output)
+ *
+ * Privacy guarantee: no data leaves this component tree; all processing is synchronous
+ * or offloaded to same-origin Web Workers via {@link runPipelineAsync}.
+ */
 import { LandingComposer, type SampleTriggerId } from './LandingComposer';
+/**
+ * @module App
+ * @description Root application component for Detect the PII.
+ *
+ * Owns all top-level state: active document session, redaction mode, marker style,
+ * theme preference, navigation section, batch file queue, and audit overlay visibility.
+ *
+ * Data flow:
+ *   LandingComposer (input) → document-pipeline (detect + redact) → DiffSuggestionsView + AuditPanel (output)
+ *
+ * Privacy guarantee: no data leaves this component tree; all processing is synchronous
+ * or offloaded to same-origin Web Workers via {@link runPipelineAsync}.
+ */
 import { PipelineFlow } from './PipelineFlow';
+/**
+ * @module App
+ * @description Root application component for Detect the PII.
+ *
+ * Owns all top-level state: active document session, redaction mode, marker style,
+ * theme preference, navigation section, batch file queue, and audit overlay visibility.
+ *
+ * Data flow:
+ *   LandingComposer (input) → document-pipeline (detect + redact) → DiffSuggestionsView + AuditPanel (output)
+ *
+ * Privacy guarantee: no data leaves this component tree; all processing is synchronous
+ * or offloaded to same-origin Web Workers via {@link runPipelineAsync}.
+ */
 import { ProgressChecklist } from './ProgressChecklist';
+/**
+ * @module App
+ * @description Root application component for Detect the PII.
+ *
+ * Owns all top-level state: active document session, redaction mode, marker style,
+ * theme preference, navigation section, batch file queue, and audit overlay visibility.
+ *
+ * Data flow:
+ *   LandingComposer (input) → document-pipeline (detect + redact) → DiffSuggestionsView + AuditPanel (output)
+ *
+ * Privacy guarantee: no data leaves this component tree; all processing is synchronous
+ * or offloaded to same-origin Web Workers via {@link runPipelineAsync}.
+ */
 import { PromptLogModal } from './PromptLogModal';
+/**
+ * @module App
+ * @description Root application component for Detect the PII.
+ *
+ * Owns all top-level state: active document session, redaction mode, marker style,
+ * theme preference, navigation section, batch file queue, and audit overlay visibility.
+ *
+ * Data flow:
+ *   LandingComposer (input) → document-pipeline (detect + redact) → DiffSuggestionsView + AuditPanel (output)
+ *
+ * Privacy guarantee: no data leaves this component tree; all processing is synchronous
+ * or offloaded to same-origin Web Workers via {@link runPipelineAsync}.
+ */
 import { RulesRestorePanel } from './RulesRestorePanel';
+/**
+ * @module App
+ * @description Root application component for Detect the PII.
+ *
+ * Owns all top-level state: active document session, redaction mode, marker style,
+ * theme preference, navigation section, batch file queue, and audit overlay visibility.
+ *
+ * Data flow:
+ *   LandingComposer (input) → document-pipeline (detect + redact) → DiffSuggestionsView + AuditPanel (output)
+ *
+ * Privacy guarantee: no data leaves this component tree; all processing is synchronous
+ * or offloaded to same-origin Web Workers via {@link runPipelineAsync}.
+ */
 import { Sidebar, type NavSection } from './Sidebar';
 
 type ThemeMode = 'dark' | 'light';

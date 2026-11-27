@@ -1,3 +1,13 @@
+/**
+ * @module document-pipeline
+ * @description Orchestrates multi-format document analysis and redaction.
+ *
+ * Accepts a {@link LoadedDocument} (parsed by `src/formats/`) and runs the full
+ * detect → validate → redact → diff → export pipeline, returning a
+ * {@link DocumentSessionResult} ready for the UI diff viewer and audit panel.
+ *
+ * All operations are synchronous and browser-local — no network calls are made.
+ */
 import { serializeMapping } from '../formats/csv';
 import {
   generateDocument,

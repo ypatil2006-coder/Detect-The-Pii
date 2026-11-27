@@ -1,3 +1,13 @@
+/**
+ * @module LandingComposer
+ * @description Primary input area for the PII sanitizer workbench.
+ *
+ * Handles raw text paste, file drag-and-drop, file picker, 1-click sample loaders,
+ * redaction mode/marker-style selection, and the Sanitize action.
+ *
+ * File validation (extension, size) is enforced before any parsing begins.
+ * No file content is transmitted outside the browser.
+ */
 import { useEffect, useRef, useState, type DragEvent, type FormEvent } from 'react';
 import type { MarkerStyle } from '../core/types';
 import { ACCEPT_ATTR } from '../formats/index';
