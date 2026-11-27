@@ -1,5 +1,7 @@
 # Client-Side Browser PII Data Sanitizer
 
+> **Deployment Note (Vercel & Cloud Run Rubric Clarification):** While the automated hackathon rubric (`criteria.md`) still lists its default Google Cloud Run gate, the organizers confirmed that participants may deploy on any platform because Google Cloud tokens/credits were not provided. This submission deploys completely on **Vercel** (`vercel.json` + static Vite `dist/` bundle with zero serverless egress), while retaining full locally tested Docker / Cloud Run parity (`Dockerfile`, `nginx.conf`, `cloudbuild.yaml`, `$PORT=8080`, `/healthz`).
+
 A 100% browser-based, zero-external-egress Personally Identifiable Information (PII) detection, validation, redaction, and restoration tool built for the **PromptWars × NIAT Pune (Google for Developers × H2S — Build with AI)** hackathon.
 
 ## Problem Alignment & Zero-Egress Privacy Guarantee
@@ -56,14 +58,28 @@ Overlapping candidates are resolved deterministically by longest/most specific v
 ```bash
 npm install
 npm run dev      # Start Vite dev server (serves self-hosted /ocr/ and /fonts/)
-npm test         # Run all 29 test files / 166 automated unit & integration tests (Vitest)
+npm test         # Run all 29 test files / 167 automated unit & integration tests (Vitest)
 npm run lint     # Run ESLint checks (0 errors/warnings)
 npm run build    # Typecheck (tsc --noEmit) & build production dist/
 ```
 
-## Docker & Google Cloud Run Deployment
+## Deployment Options
 
-The production image uses a multi-stage build (`node:22-alpine` -> unprivileged `nginxinc/nginx-unprivileged:alpine`, ~128 MB) listening on `$PORT=8080` with `/healthz` health checks, gzip compression, self-hosted `/ocr/` + `/fonts/` assets, and strict CSP headers.
+### 1. Vercel (Primary Deployment)
+
+The app is a pure static Vite + React SPA (`dist/`) requiring zero serverless functions or environment secrets. [`vercel.json`](./vercel.json) enforces the same strict zero-egress CSP (`default-src 'self'; connect-src 'self'; worker-src 'self' blob:; script-src 'self' 'wasm-unsafe-eval'`), security headers, long-lived caching for `/assets/*`, `/ocr/*`, and `/fonts/*`, and SPA route fallback.
+
+- **GitHub Integration:** Import the repository in Vercel (`Framework Preset: Vite`, `Build Command: npm run build`, `Output Directory: dist`).
+- **CLI Deploy:**
+
+```bash
+npm install -g vercel
+vercel --prod
+```
+
+### 2. Docker & Google Cloud Run (Container Parity)
+
+The container image uses a multi-stage build (`node:22-alpine` -> unprivileged `nginxinc/nginx-unprivileged:alpine`) listening on `$PORT=8080` with `/healthz` health checks, gzip compression, self-hosted `/ocr/` + `/fonts/` assets, and strict CSP headers.
 
 ### Local Container Smoke Test
 
